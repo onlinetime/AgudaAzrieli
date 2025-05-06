@@ -1,20 +1,25 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet } from "react-native";
-import { auth } from "../../firebase";
+import { auth } from "../firebase";
+
 import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
 } from "firebase/auth";
+
+import { router } from "expo-router"; // 🆕 הוספנו
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
+  // 🆕 פונקציית התחברות מעודכנת
   const handleLogin = async () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       setMessage("Login successful!");
+      router.replace("/drawer/home"); // 🆕 מעבר למסך Home
     } catch (error) {
       setMessage(`Login failed: ${error.message}`);
     }
@@ -41,7 +46,7 @@ const Login = () => {
         style={styles.input}
         placeholder="Email"
         value={email}
-        onChangeText={(text) => setEmail(text)}
+        onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
       />
@@ -50,7 +55,7 @@ const Login = () => {
         style={styles.input}
         placeholder="Password"
         value={password}
-        onChangeText={(text) => setPassword(text)}
+        onChangeText={setPassword}
         secureTextEntry
       />
 
