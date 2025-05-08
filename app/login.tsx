@@ -46,9 +46,9 @@ const Login = () => {
       if (userSnap.exists()) {
         const userData = userSnap.data();
         if (userData.isAdmin === true) {
-          router.replace("/admin-home");
+          router.replace("./admin-home");
         } else {
-          router.replace("/user-home");
+          router.replace("./user-home");
         }
       } else {
         setMessage("User profile not found in Firestore.");
