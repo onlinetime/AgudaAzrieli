@@ -1,11 +1,11 @@
-// two.tsx
+// one.tsx
 import React from "react";
 import { View, Text } from "react-native";
 
-export default function Two() {
+export default function One() {
   return (
     <View>
-      <Text>Tab Two</Text>
+      <Text>Tab One</Text>
     </View>
   );
 }

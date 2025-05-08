@@ -8,22 +8,13 @@ import {
 } from "firebase/auth";
 
 import { router } from "expo-router"; // 🆕 הוספנו
+import { db } from "../firebase"; // ← הוסף
+import { doc, getDoc } from "firebase/firestore"; // ← הוסף
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
-
-  // 🆕 פונקציית התחברות מעודכנת
-  const handleLogin = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      setMessage("Login successful!");
-      router.replace("/drawer/home"); // 🆕 מעבר למסך Home
-    } catch (error) {
-      setMessage(`Login failed: ${error.message}`);
-    }
-  };
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -35,6 +26,35 @@ const Login = () => {
       setMessage("Password reset email sent!");
     } catch (error) {
       setMessage(`Failed to send reset email: ${error.message}`);
+    }
+  };
+
+  // 🆕 פונקציית התחברות מעודכנת
+  const handleLogin = async () => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      setMessage("Login successful!");
+
+      const user = userCredential.user;
+      const userDocRef = doc(db, "users", user.email);
+      const userSnap = await getDoc(userDocRef);
+
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (userData.isAdmin === true) {
+          router.replace("/admin-home");
+        } else {
+          router.replace("/user-home");
+        }
+      } else {
+        setMessage("User profile not found in Firestore.");
+      }
+    } catch (error) {
+      setMessage(`Login failed: ${error.message}`);
     }
   };
 

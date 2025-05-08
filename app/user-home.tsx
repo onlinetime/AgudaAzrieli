@@ -35,7 +35,7 @@ function CardButton({ label, to }: { label: string; to: string }) {
         pressed && { transform: [{ scale: 0.98 }] },
       ]}
       android_ripple={{ color: "rgba(0,0,0,0.15)" }}
-      onPress={() => router.push(to)}
+      onPress={() => router.push(to as any)}
     >
       <LinearGradient
         colors={["#4f6cf7", "#d94645"]} /* כחול → אדום עדין */
