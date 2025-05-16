@@ -6,10 +6,10 @@ import { LinearGradient } from "expo-linear-gradient";
 /** יעד הנתיב והכותרת של כל פריט */
 const MENU_ITEMS = [
   { label: "כרטיס סטודנט", to: "/(drawer)/student-card" },
-  { label: "אירועים קרובים", to: "/(drawer)/events" },
+  { label: "אירועים קרובים", to: "./events" },
   { label: "הודעות", to: "/(drawer)/inbox" },
   { label: "פורומים", to: "/(drawer)/forums" },
-  { label: "הגדרות", to: "/(drawer)/settings" },
+  { label: "רשימת חנויות", to: "./user-store" },
 ];
 
 export default function MainScreen() {
