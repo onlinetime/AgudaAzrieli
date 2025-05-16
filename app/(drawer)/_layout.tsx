@@ -5,7 +5,7 @@ export default function DrawerLayout() {
     <Drawer
       screenOptions={{
         drawerPosition: "right",
-        headerShown: true,
+        headerShown: false,
       }}
     >
       {/* אין כאן שום NavigationContainer נוסף */}

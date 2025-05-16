@@ -1,17 +1,10 @@
 // app/admin-home.tsx
 import React from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Platform,
-  StatusBar,
-} from "react-native";
+import { StyleSheet, Pressable, Platform, StatusBar } from "react-native";
+import { View, Text } from "../components/Themed";               // Themed.View & Themed.Text
+import { useTheme } from "@react-navigation/native";             // כדי למשוך colors
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 
-/** מטריצה של פעולות הניהול */
 const ADMIN_ACTIONS = [
   { label: "הוסף כרטיס סטודנט", to: "/admin/add-student-card" },
   { label: "הוסף אירוע", to: "/admin/add-event" },
@@ -21,56 +14,45 @@ const ADMIN_ACTIONS = [
 ];
 
 export default function AdminHome() {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
-      {/* סרגל עליון צבעוני */}
-      <LinearGradient
-        colors={["#4f6cf7", "#d94645"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.headerBar}
-      >
-        <Text style={styles.headerText}>ברוך הבא אדמין יקר</Text>
-      </LinearGradient>
+      {/* סרגל עליון */}
+      <View style={[styles.headerBar]}>
+        <Text lightColor="#fff" darkColor="#fff" style={styles.headerText}>
+          ברוך הבא אדמין יקר
+        </Text>
+      </View>
 
-      {/* אזור כפתורי הניהול */}
+      {/* תפריט הכפתורים */}
       <View style={styles.menu}>
         {ADMIN_ACTIONS.map((act) => (
-          <CardButton key={act.to} label={act.label} to={act.to} />
+          <Pressable
+            key={act.to}
+            onPress={() => router.push(act.to as any)}
+            android_ripple={{ color: colors.card }}
+            style={({ pressed }) => [
+              styles.card,
+              {
+                backgroundColor: colors.border,   // כפתור אפור דינמי
+                opacity: pressed ? 0.8 : 1,        // אפקט לחיצה
+              },
+            ]}
+          >
+            <Text style={styles.cardLabel}>{act.label}</Text>
+          </Pressable>
         ))}
       </View>
     </View>
   );
 }
 
-/* כפתור‑כרטיס */
-function CardButton({ label, to }: { label: string; to: string }) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && { transform: [{ scale: 0.98 }] },
-      ]}
-      android_ripple={{ color: "rgba(0,0,0,0.12)" }}
-      onPress={() => router.push(to as any)}
-    >
-      <LinearGradient
-        colors={["#fafbff", "#f5f7fa"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.cardBg}
-      >
-        <Text style={styles.cardLabel}>{label}</Text>
-      </LinearGradient>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    // אין backgroundColor פה – זה מגיע מ-Themed.View ב-root layout
   },
 
   /* ===== Header Bar ===== */
@@ -80,6 +62,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
     marginBottom: 28,
+    backgroundColor: "#4f6cf7",      // אפשר להפוך לדינמי אם תרצה
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -91,10 +74,10 @@ const styles = StyleSheet.create({
     }),
   },
   headerText: {
-    color: "#fff",
     fontSize: 28,
     fontWeight: "700",
     letterSpacing: 0.3,
+    // הצבע מ-Themed.Text ייגרם על ידי lightColor/darkColor שנתנו לו
   },
 
   /* ===== Menu ===== */
@@ -108,6 +91,8 @@ const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
     overflow: "hidden",
+    paddingVertical: 20,
+    alignItems: "center",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -118,14 +103,10 @@ const styles = StyleSheet.create({
       android: { elevation: 3 },
     }),
   },
-  cardBg: {
-    paddingVertical: 20,
-    alignItems: "center",
-  },
   cardLabel: {
     fontSize: 20,
     fontWeight: "500",
-    color: "#4f4f4f",
     letterSpacing: 0.4,
+    // צבע יתאים אוטומטית מ-Themed.Text (colors.text)
   },
 });

@@ -1,44 +1,76 @@
+// app/main-screen.tsx
 import React from "react";
-import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import { Text, View } from "../components/Themed";      // Themed.View & Themed.Text
+import { useTheme } from "@react-navigation/native";  
+import { Pressable, StyleSheet, Platform, StatusBar } from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
-/** יעד הנתיב והכותרת של כל פריט */
 const MENU_ITEMS = [
   { label: "כרטיס סטודנט", to: "/(drawer)/student-card" },
   { label: "אירועים קרובים", to: "/(drawer)/events" },
   { label: "הודעות", to: "/(drawer)/inbox" },
-  { label: "פורומים", to: "/(drawer)/forums" },
+  { label: "פורומים", to: "/forums" },
+  { label: "רשימת חנויות", to: "/(drawer)/user-store" },
   { label: "הגדרות", to: "/(drawer)/settings" },
 ];
 
 export default function MainScreen() {
-  return (
-    <LinearGradient colors={["#fafbff", "#f5f7fa"]} style={styles.container}>
-      <Text style={styles.title}>ברוכים הבאים לאגודת הסטודנטים🎉</Text>
+  const { colors, dark } = useTheme();
 
-      <View style={styles.menu}>
-        {MENU_ITEMS.map((item) => (
-          <CardButton key={item.to} label={item.label} to={item.to} />
-        ))}
-      </View>
-    </LinearGradient>
+  // רקע גרדיאנט מותאם לכל מצב
+  const bgColors: [string, string] = dark
+    ? [colors.card, colors.background]
+    : ["#fafbff", "#f5f7fa"];
+
+  return (
+    <View style={styles.wrapper}>
+      <LinearGradient colors={bgColors} style={styles.container}>
+        {/* כותרת עם צבע טקסט דינמי */}
+        <Text style={[styles.title, { color: colors.text }]}>
+          ברוכים הבאים לאגודת הסטודנטים 🎉
+        </Text>
+
+        <View style={styles.menu}>
+          {MENU_ITEMS.map((item) => (
+            <CardButton
+              key={item.to}
+              label={item.label}
+              to={item.to}
+              rippleColor={colors.border}              // אפקט לחיצה דינמי
+              gradientColors={[colors.primary, colors.notification] as [string, string]}
+            />
+          ))}
+        </View>
+      </LinearGradient>
+    </View>
   );
 }
 
-/* כפתור‑כרטיס */
-function CardButton({ label, to }: { label: string; to: string }) {
+import type { ColorValue } from "react-native";
+
+function CardButton({
+  label,
+  to,
+  rippleColor,
+  gradientColors,
+}: {
+  label: string;
+  to: string;
+  rippleColor: string;
+  gradientColors: [ColorValue, ColorValue, ...ColorValue[]];
+}) {
   return (
     <Pressable
       style={({ pressed }) => [
         styles.card,
         pressed && { transform: [{ scale: 0.98 }] },
       ]}
-      android_ripple={{ color: "rgba(0,0,0,0.15)" }}
+      android_ripple={{ color: rippleColor }}
       onPress={() => router.push(to as any)}
     >
       <LinearGradient
-        colors={["#4f6cf7", "#d94645"]} /* כחול → אדום עדין */
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.cardBg}
@@ -50,23 +82,28 @@ function CardButton({ label, to }: { label: string; to: string }) {
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+  },
   container: {
     flex: 1,
-    paddingTop: 60,
     alignItems: "center",
+    paddingHorizontal: "6%",
+    paddingTop: 20,
   },
   title: {
     fontSize: 30,
     fontWeight: "600",
     marginBottom: 40,
-    color: "#333",
   },
   menu: {
-    width: "88%",
+    width: "100%",
     gap: 18,
   },
   card: {
     borderRadius: 16,
+    overflow: "hidden",
     ...Platform.select({
       ios: {
         shadowColor: "#000",
@@ -83,9 +120,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cardLabel: {
-    color: "#fff",
     fontSize: 20,
     fontWeight: "500",
     letterSpacing: 0.5,
+    color: "#fff",        
   },
 });

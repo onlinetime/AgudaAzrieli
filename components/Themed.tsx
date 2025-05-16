@@ -1,14 +1,9 @@
-/**
- * Learn more about Light and Dark modes:
- * https://docs.expo.io/guides/color-schemes/
- */
+// components/Themed.tsx
 
 import { Text as DefaultText, View as DefaultView } from "react-native";
+import { useTheme } from "@react-navigation/native";
 
-import Colors from "../constants/Colors";
-import { useColorScheme } from "./useColorScheme";
-
-type ThemeProps = {
+export type ThemeProps = {
   lightColor?: string;
   darkColor?: string;
 };
@@ -16,33 +11,32 @@ type ThemeProps = {
 export type TextProps = ThemeProps & DefaultText["props"];
 export type ViewProps = ThemeProps & DefaultView["props"];
 
-export function useThemeColor(
-  props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark
+/**
+ * בוחר צבע מתוך ה-ThemeProvider של React Navigation
+ * או מתוך override מקומי (lightColor/darkColor)
+ */
+function useThemeColor(
+  props: { lightColor?: string; darkColor?: string },
+  colorName: "text" | "background"
 ) {
-  const theme = useColorScheme() ?? "light";
-  const colorFromProps = props[theme];
-
-  if (colorFromProps) {
-    return colorFromProps;
-  } else {
-    return Colors[theme][colorName];
+  const { colors, dark } = useTheme();
+  // קודם תעדיף override אם הוגדר
+  const override = dark ? props.darkColor : props.lightColor;
+  if (override) {
+    return override;
   }
+  // אם אין override – קח מתוך colors של ה-ThemeContext
+  return colors[colorName];
 }
 
 export function Text(props: TextProps) {
   const { style, lightColor, darkColor, ...otherProps } = props;
-  const color = useThemeColor({ light: lightColor, dark: darkColor }, "text");
-
+  const color = useThemeColor({ lightColor, darkColor }, "text");
   return <DefaultText style={[{ color }, style]} {...otherProps} />;
 }
 
 export function View(props: ViewProps) {
   const { style, lightColor, darkColor, ...otherProps } = props;
-  const backgroundColor = useThemeColor(
-    { light: lightColor, dark: darkColor },
-    "background"
-  );
-
+  const backgroundColor = useThemeColor({ lightColor, darkColor }, "background");
   return <DefaultView style={[{ backgroundColor }, style]} {...otherProps} />;
 }

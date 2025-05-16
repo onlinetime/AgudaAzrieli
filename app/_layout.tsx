@@ -1,56 +1,54 @@
 // app/_layout.tsx
 import "../firebase";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Slot } from "expo-router";
-import {
-  ThemeProvider,
-  DarkTheme,
-  DefaultTheme,
-} from "@react-navigation/native";
-import { useColorScheme } from "../components/useColorScheme";
-import * as SplashScreen from "expo-splash-screen";
-import { useFonts } from "expo-font";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
-import { useEffect } from "react";
-import "react-native-reanimated";
+import { ThemeProvider, DarkTheme, DefaultTheme } from "@react-navigation/native";
+import { useColorScheme as deviceColorScheme } from "react-native";
+import { View as ThemedView, Text } from "../components/Themed";
+import { View, Switch, StyleSheet } from "react-native";
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, runOnJS } from "react-native-reanimated";
+
+const AnimatedThemedView = Animated.createAnimatedComponent(ThemedView);
 
 export default function RootLayout() {
-  // נתיב מותאם לשורש הפרויקט (app/_layout.tsx נמצא בתיקיית app)
-  const [loaded, error] = useFonts({
-    SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
-    ...FontAwesome.font,
-  });
-  // העבירו את ה־preventAutoHide לתוך אפקט
-  useEffect(() => {
-    SplashScreen.preventAutoHideAsync();
-  }, []);
+  const system = deviceColorScheme() ?? "light";
+  const [scheme, setScheme] = useState<"light" | "dark">(system);
+  const opacity = useSharedValue(1);
 
-  // זריקת שגיאה אם לא נטען
-  useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+  const toggle = () => {
+    opacity.value = withTiming(0, { duration: 200 }, () => {
+      runOnJS(setScheme)(prev => (prev === "light" ? "dark" : "light"));
+      opacity.value = withTiming(1, { duration: 200 });
+    });
+  };
 
-  // הסתרת הספלש לאחר טעינת הגופנים
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  const scheme = useColorScheme();
+  const currentTheme = scheme === "dark" ? DarkTheme : DefaultTheme;
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    backgroundColor: currentTheme.colors.background,
+  }));
 
   return (
-    <ThemeProvider value={scheme === "dark" ? DarkTheme : DefaultTheme}>
-      {/* תמיד נטען את ה־Slot, גם אם הגופנים עדיין בטעינה */}
-      <Slot />
+    <ThemeProvider value={currentTheme}>
+      <AnimatedThemedView style={[styles.root, animatedStyle]}>
+        <View style={styles.header}>
+          <Text>{scheme === "dark" ? "Dark Mode" : "Light Mode"}</Text>
+          <Switch value={scheme === "dark"} onValueChange={toggle} />
+        </View>
 
-      {/* במידה ורוצים להראות overlay טעינה:
-        {!loaded && (
-          <View style={StyleSheet.absoluteFill}>
-            <ActivityIndicator size="large" />
-          </View>
-        )}
-      */}
+        {/* this is where nested layouts or pages render */}
+        <Slot />
+      </AnimatedThemedView>
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    padding: 10,
+  },
+});
