@@ -83,11 +83,6 @@ export default function AdminAddStore() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="#4f6cf7" />
-      </TouchableOpacity>
-
       <Text style={styles.title}>Add New Store</Text>
 
       <Text style={styles.label}>Store Name</Text>
@@ -166,17 +161,7 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     backgroundColor: "#fff",
   },
-  backButton: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    width: 50,
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f0f0f0",
-    borderRadius: 25,
-  },
+
   title: {
     fontSize: 26,
     fontWeight: "700",

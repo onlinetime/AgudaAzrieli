@@ -12,10 +12,10 @@ import { LinearGradient } from "expo-linear-gradient";
 
 /** מטריצה של פעולות הניהול */
 const ADMIN_ACTIONS = [
-  { label: "הוסף כרטיס סטודנט", to: "/admin/add-student-card" },
-  { label: "שלח הודעה", to: "/admin/send-message" },
+  { label: "צפייה בפידבקים", to: "/admin/feedback-list" },
   { label: "פרסם בפורום", to: "/admin/post-forum" },
   { label: "הגדרות מערכת", to: "/admin/settings" },
+  { label: "הוסף כרטיס סטודנט", to: "/admin/add-student-card" },
 ];
 
 export default function AdminHome() {

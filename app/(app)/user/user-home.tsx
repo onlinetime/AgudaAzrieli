@@ -10,6 +10,7 @@ const MENU_ITEMS = [
   { label: "הודעות", to: "/(drawer)/inbox" },
   { label: "פורומים", to: "/(drawer)/forums" },
   { label: "רשימת חנויות", to: "./user-store" },
+  { label: "שליחת פידבק", to: "./user-feedback" },
 ];
 
 export default function MainScreen() {

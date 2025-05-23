@@ -6,6 +6,7 @@ import {
   Button,
   StyleSheet,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -39,26 +40,38 @@ export default function OpenEvents() {
     fetchEvents();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, "events", id));
-      alert("Event deleted successfully!");
-
-      // Refresh the events list
-      setEvents((prevEvents) => prevEvents.filter((event) => event.id !== id));
-    } catch (error) {
-      console.error("Error deleting event: ", error);
-      alert("Failed to delete event. Please try again.");
-    }
+  const handleDelete = (id: string) => {
+    Alert.alert(
+      "Delete Event",
+      "Are you sure you want to delete this event?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await deleteDoc(doc(db, "events", id));
+              alert("Event deleted successfully!");
+              setEvents((prevEvents) =>
+                prevEvents.filter((event) => event.id !== id)
+              );
+            } catch (error) {
+              console.error("Error deleting event: ", error);
+              alert("Failed to delete event. Please try again.");
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={24} color="#4f6cf7" />
-      </TouchableOpacity>
-
       <Text style={styles.title}>Open Events</Text>
 
       {events.length > 0 ? (
@@ -97,17 +110,7 @@ const styles = StyleSheet.create({
     padding: 40,
     backgroundColor: "#fff",
   },
-  backButton: {
-    position: "absolute",
-    top: 10,
-    left: 10,
-    width: 50,
-    height: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#f0f0f0",
-    borderRadius: 25,
-  },
+
   title: {
     fontSize: 26,
     fontWeight: "700",
