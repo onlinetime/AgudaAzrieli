@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   Text,
+  ScrollView,
 } from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,7 +23,6 @@ import { router } from "expo-router";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-// טיפוס של חנות
 interface Store {
   id: string;
   name: string;
@@ -39,17 +39,22 @@ export default function UserStoreList() {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const unsub = onSnapshot(
       collection(db, "stores"),
-      (snapshot) => {
+      snapshot => {
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
           ...(doc.data() as Omit<Store, "id">),
         }));
         setStores(data);
+        // extract unique categories + All
+        const uniqueCats = Array.from(new Set(data.map(s => s.category)));
+        setCategories(["All", ...uniqueCats]);
         setLoading(false);
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -57,7 +62,7 @@ export default function UserStoreList() {
           useNativeDriver: true,
         }).start();
       },
-      (error) => {
+      error => {
         console.error("Error fetching stores:", error);
         setLoading(false);
       }
@@ -65,9 +70,12 @@ export default function UserStoreList() {
     return () => unsub();
   }, []);
 
-  const filtered = stores.filter(store =>
-    store.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // filter by search + category
+  const filtered = stores.filter(store => {
+    const matchesSearch = store.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === "All" || store.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const renderStore = ({ item }: { item: Store }) => (
     <Animated.View style={[styles.card, { opacity: fadeAnim }]}>      
@@ -78,10 +86,7 @@ export default function UserStoreList() {
         ]}
       >
         {item.picture ? (
-          <Image
-            source={{ uri: item.picture }}
-            style={styles.image}
-          />
+          <Image source={{ uri: item.picture }} style={styles.image} />
         ) : (
           <View style={styles.imagePlaceholder}>
             <Ionicons name="image-outline" size={40} color="#BBB" />
@@ -94,16 +99,13 @@ export default function UserStoreList() {
               <Text style={styles.badgeText}>{item.category}</Text>
             </View>
           </View>
-
           <Text style={styles.description} numberOfLines={2} ellipsizeMode="tail">
             {item.description}
           </Text>
-
           <View style={styles.infoRow}>
             <Ionicons name="location-sharp" size={14} color={colors.text} />
             <Text style={styles.infoText}>{item.address}</Text>
           </View>
-
           <View style={styles.infoRow}>
             <Ionicons name="call-outline" size={14} color={colors.text} />
             <Text style={styles.infoText}>{item.phoneNumber}</Text>
@@ -135,6 +137,7 @@ export default function UserStoreList() {
         </View>
       </LinearGradient>
 
+      {/* search input */}
       <View style={styles.searchContainer}>
         <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
         <TextInput
@@ -147,6 +150,32 @@ export default function UserStoreList() {
           clearButtonMode="while-editing"
         />
       </View>
+
+      {/* dynamic category filter */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterContainer}
+        contentContainerStyle={styles.filterContent}
+      >
+        {categories.map(cat => (
+          <Pressable
+            key={cat}
+            onPress={() => setSelectedCategory(cat)}
+            style={[
+              styles.filterChip,
+              { backgroundColor: selectedCategory === cat ? colors.primary : colors.card }
+            ]}
+          >
+            <Text style={[
+              styles.filterText,
+              { color: selectedCategory === cat ? '#fff' : colors.text }
+            ]}>
+              {cat}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
 
       {loading ? (
         <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -172,155 +201,47 @@ export default function UserStoreList() {
 const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 360);
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
+  container: { flex: 1, paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
   header: {
     paddingVertical: 20,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 8,
     elevation: 5,
   },
-  headerContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  headerIcon: {
-    marginRight: 8,
-  },
-  headerText: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#fff",
-    letterSpacing: 1,
-    textShadowColor: "rgba(0,0,0,0.3)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 16,
-    borderRadius: 24,
-    overflow: "hidden",
-    elevation: 2,
-  },
-  searchIcon: {
-    paddingHorizontal: 12,
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    fontSize: 16,
-    paddingRight: 12,
-  },
-  list: {
-    alignItems: "center",
-    paddingBottom: 24,
-  },
-  loader: {
-    marginTop: 40,
-  },
-  card: {
-    width: CARD_WIDTH,
-    marginBottom: 16,
-    borderRadius: 16,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  cardPressable: {
-    borderRadius: 16,
-    overflow: "hidden",
-  },
-  cardPressed: {
-    opacity: 0.8,
-  },
-  image: {
-    width: "100%",
-    height: 160,
-  },
-  imagePlaceholder: {
-    width: "100%",
-    height: 160,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-  },
-  content: {
-    padding: 12,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#111827",
-    flex: 1,
-  },
-  badge: {
-    backgroundColor: "#E5E7EB",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#374151",
-  },
-  description: {
-    fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 12,
-  },
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 6,
-  },
-  infoText: {
-    fontSize: 13,
-    color: "#4B5563",
-    marginLeft: 6,
-    flex: 1,
-  },
-  footerRow: {
-    padding: 12,
-    borderTopWidth: 1,
-    borderColor: "#F3F4F6",
-    alignItems: "flex-start",
-  },
-  discountBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  discountText: {
-    color: "#1F2937",
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    marginTop: 60,
-    alignItems: "center",
-  },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: "#9CA3AF",
-  },
+  headerContent: { flexDirection: 'row', alignItems: 'center' },
+  headerIcon: { marginRight: 8 },
+  headerText: { fontSize: 26, fontWeight: '700', color: '#fff', letterSpacing: 1, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', margin: 16, borderRadius: 24, overflow: 'hidden', elevation: 2 },
+  searchIcon: { paddingHorizontal: 12 },
+  searchInput: { flex: 1, height: 40, fontSize: 16, paddingRight: 12 },
+  filterContainer: { maxHeight: 50, marginBottom: 8 },
+  filterContent: { paddingHorizontal: 16, alignItems: 'center' },
+  filterChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, marginRight: 8 },
+  filterText: { fontSize: 14 },
+  list: { alignItems: 'center', paddingBottom: 24 },
+  loader: { marginTop: 40 },
+  card: { width: CARD_WIDTH, marginVertical: 8, borderRadius: 16, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 4 },
+  cardPressable: { borderRadius: 16, overflow: 'hidden' },
+  cardPressed: { opacity: 0.8 },
+  image: { width: '100%', height: 160 },
+  imagePlaceholder: { width: '100%', height: 160, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f0f0f0' },
+  content: { padding: 12 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  title: { fontSize: 18, fontWeight: '600', color: '#111827', flex: 1 },
+  badge: { backgroundColor: '#E5E7EB', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
+  badgeText: { fontSize: 12, fontWeight: '500', color: '#374151' },
+  description: { fontSize: 14, color: '#6B7280', marginBottom: 12 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  infoText: { fontSize: 13, color: '#4B5563', marginLeft: 6, flex: 1 },
+  footerRow: { padding: 12, borderTopWidth: 1, borderColor: '#F3F4F6', alignItems: 'flex-start' },
+  discountBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  discountText: { color: '#1F2937', fontWeight: '600' },
+  emptyContainer: { marginTop: 60, alignItems: 'center' },
+  emptyText: { marginTop: 12, fontSize: 16, color: '#9CA3AF' },
 });
