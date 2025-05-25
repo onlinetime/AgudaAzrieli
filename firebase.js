@@ -1,14 +1,13 @@
 // firebase.js
-import { Platform } from "react-native";
 import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  initializeAuth,
-  getAuth,
-  getReactNativePersistence,
-  setPersistence,
-} from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import {
+  getAuth,
+  initializeAuth,
+  getReactNativePersistence,
+} from "firebase/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Platform } from "react-native";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYnxrYwi3EgkMx4uxkfZrOky-WVKx9fFs",
@@ -19,31 +18,34 @@ const firebaseConfig = {
   appId: "1:936001532201:web:3896c063dd5c8384bd8738",
 };
 
-/* ----------- App singleton ----------- */
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
-/* ----------- Auth with persistence ----------- */
-// **הגדרה של auth באופן חיצוני**:
-let auth;
-
-if (Platform.OS === "web") {
-  auth = getAuth(app);
-} else {
-  try {
-    //initializeAuth מחזיר מופע auth עם AsyncStorage
-    auth = initializeAuth(app, {
-      persistence: getReactNativePersistence(AsyncStorage),
-    });
-  } catch {
-    // אם כבר מאותחל (hot reload)
-    auth = getAuth(app);
-    // לוודא שה־auth הקיים יקבל persistence
-    setPersistence(auth, getReactNativePersistence(AsyncStorage));
-  }
-}
-
-/* ----------- Firestore ----------- */
 const db = getFirestore(app);
 
-/* ----------- Export ----------- */
-export { app, auth, db };
+/* ------------------------------------------------------------------
+   getFirebaseAuth – גרסה שמבטיחה שה-Auth נרשם בדיוק פעם אחת
+------------------------------------------------------------------ */
+let cachedAuth; // ← נשמר בזיכרון
+
+export const getFirebaseAuth = () => {
+  if (cachedAuth) return cachedAuth;
+
+  if (Platform.OS === "web") {
+    // דפדפן – getAuth מספיק
+    cachedAuth = getAuth(app);
+    return cachedAuth;
+  }
+
+  // React-Native / Expo – ננסה קודם initializeAuth (רושם את ה-component)
+  try {
+    cachedAuth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (e) {
+    // אם כבר מאותחל, ניפול לפה
+    cachedAuth = getAuth(app);
+  }
+
+  return cachedAuth;
+};
+
+export { db };
