@@ -1,143 +1,262 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
-  FlatList,
-  Button,
   StyleSheet,
-  TouchableOpacity,
+  FlatList,
+  Pressable,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Platform,
+  StatusBar,
   Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import {
-  getFirestore,
-  collection,
-  getDocs,
-  deleteDoc,
-  doc,
-} from "firebase/firestore";
+import { LinearGradient } from "expo-linear-gradient";
+import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../../../firebase";
+import { useTheme } from "@react-navigation/native";
 import { router } from "expo-router";
 
-export default function OpenEvents() {
-  const [events, setEvents] = useState<any[]>([]);
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
-  // Fetch events from Firestore
+interface EventItem {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+}
+
+export default function OpenEventsModern() {
+  const { colors } = useTheme();
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
-    const fetchEvents = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "events"));
-        const eventsList = querySnapshot.docs.map((doc) => ({
+    const unsub = onSnapshot(
+      collection(db, "events"),
+      (snapshot) => {
+        const data = snapshot.docs.map(doc => ({
           id: doc.id,
-          ...doc.data(),
+          ...(doc.data() as Omit<EventItem, "id">),
         }));
-        setEvents(eventsList);
-      } catch (error) {
-        console.error("Error fetching events: ", error);
+        setEvents(data);
+        setLoading(false);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      },
+      (error) => {
+        console.error("Error fetching events:", error);
+        setLoading(false);
       }
-    };
-
-    fetchEvents();
+    );
+    return () => unsub();
   }, []);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "events", id));
+      setEvents(prev => prev.filter(e => e.id !== id));
+    } catch (e) {
+      console.error("Delete failed:", e);
+    }
+  };
+
+  const confirmDelete = (id: string) => {
     Alert.alert(
-      "Delete Event",
-      "Are you sure you want to delete this event?",
+      "מחק אירוע",
+      "האם אתה בטוח שברצונך למחוק את האירוע?",
       [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteDoc(doc(db, "events", id));
-              alert("Event deleted successfully!");
-              setEvents((prevEvents) =>
-                prevEvents.filter((event) => event.id !== id)
-              );
-            } catch (error) {
-              console.error("Error deleting event: ", error);
-              alert("Failed to delete event. Please try again.");
-            }
-          },
-        },
+        { text: "ביטול", style: "cancel" },
+        { text: "מחק", style: "destructive", onPress: () => handleDelete(id) },
       ],
       { cancelable: true }
     );
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Open Events</Text>
+  const renderEvent = ({ item }: { item: EventItem }) => (
+    <Animated.View style={[styles.card, { opacity: fadeAnim }]}>      
+      <View style={styles.cardContent}>
+        <View style={styles.headerRow}>
+          <Ionicons name="calendar-outline" size={20} color={colors.text} style={styles.eventIcon}/>
+          <Text style={styles.eventTitle}>{item.title}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="time-outline" size={16} color={colors.text} />
+          <Text style={styles.detailText}>Start: {item.startDate}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Ionicons name="time-outline" size={16} color={colors.text} />
+          <Text style={styles.detailText}>End: {item.endDate}</Text>
+        </View>
+      </View>
+      <Pressable
+        onPress={() => confirmDelete(item.id)}
+        style={({ pressed }) => [
+          styles.deleteBtn,
+          pressed && { opacity: 0.7 },
+        ]}
+      >
+        <LinearGradient
+          colors={["#FF6B6B", "#E64545"]}
+          style={styles.deleteGradient}
+        >
+          <Ionicons name="trash-outline" size={18} color="#fff" />
+        </LinearGradient>
+      </Pressable>
+    </Animated.View>
+  );
 
-      {events.length > 0 ? (
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>      
+      <LinearGradient
+        colors={[colors.primary, colors.background]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerBar}
+      >
+        <View style={styles.headerContent}>
+          <Ionicons name="list-circle-outline" size={28} color="#fff" style={styles.headerIcon}/>
+          <Text style={styles.headerText}>אירועים פתוחים</Text>
+        </View>
+      </LinearGradient>
+
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
         <FlatList
           data={events}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.eventItem}>
-              <View>
-                <Text style={styles.eventTitle}>{item.title}</Text>
-                <Text style={styles.eventDetails}>
-                  Start Date: {item.startDate}
-                </Text>
-                <Text style={styles.eventDetails}>
-                  End Date: {item.endDate}
-                </Text>
-              </View>
-              <Button
-                title="Delete"
-                onPress={() => handleDelete(item.id)}
-                color="red"
-              />
+          keyExtractor={item => item.id}
+          renderItem={renderEvent}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="megaphone-outline" size={60} color="#BBB" />
+              <Text style={styles.emptyText}>אין אירועים פתוחים</Text>
             </View>
           )}
         />
-      ) : (
-        <Text style={styles.noEventsText}>No events available.</Text>
       )}
     </View>
   );
 }
 
+const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 360);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 40,
-    backgroundColor: "#fff",
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
-
-  title: {
+  headerBar: {
+    paddingVertical: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+      },
+      android: { elevation: 5 },
+    }),
+  },
+  headerContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  headerIcon: {
+    marginRight: 8,
+  },
+  headerText: {
     fontSize: 26,
     fontWeight: "700",
-    marginBottom: 20,
-    textAlign: "center",
+    color: "#fff",
+    letterSpacing: 0.5,
+    textShadowColor: "rgba(0,0,0,0.25)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  eventItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
-    marginBottom: 10,
+  },
+  list: {
+    alignItems: "center",
+    paddingBottom: 24,
+  },
+  card: {
+    width: CARD_WIDTH,
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    marginVertical: 8,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 3,
+    alignItems: "center",
+  },
+  cardContent: {
+    flex: 1,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  eventIcon: {
+    marginRight: 8,
   },
   eventTitle: {
     fontSize: 18,
     fontWeight: "600",
+    color: "#111827",
+    flex: 1,
   },
-  eventDetails: {
+  detailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 2,
+  },
+  detailText: {
     fontSize: 14,
-    color: "#555",
+    color: "#4B5563",
+    marginLeft: 6,
   },
-  noEventsText: {
+  deleteBtn: {
+    marginLeft: 12,
+    borderRadius: 20,
+    overflow: "hidden",
+  },
+  deleteGradient: {
+    padding: 8,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 60,
+  },
+  emptyText: {
+    marginTop: 12,
     fontSize: 16,
-    color: "#888",
-    textAlign: "center",
-    marginTop: 50,
+    color: "#9CA3AF",
   },
 });

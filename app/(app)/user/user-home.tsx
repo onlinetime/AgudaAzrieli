@@ -1,49 +1,88 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Platform,
+  StatusBar,
+  ScrollView,
+  Dimensions,
+} from "react-native";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 /** יעד הנתיב והכותרת של כל פריט */
 const MENU_ITEMS = [
-  { label: "כרטיס סטודנט", to: "/(drawer)/student-card" },
-  { label: "אירועים קרובים", to: "./events" },
-  { label: "הודעות", to: "/(drawer)/inbox" },
-  { label: "פורומים", to: "/(drawer)/forums" },
-  { label: "רשימת חנויות", to: "./user-store" },
-  { label: "שליחת פידבק", to: "./user-feedback" },
+  { label: "כרטיס סטודנט", to: "../student-card", icon: "card-outline" },
+  { label: "אירועים קרובים", to: "./events", icon: "calendar-outline" },
+  { label: "הודעות", to: "/(drawer)/inbox", icon: "mail-outline" },
+  {
+    label: "פורומים",
+    to: "/(drawer)/forums",
+    icon: "chatbubble-ellipses-outline",
+  },
+  { label: "רשימת חנויות", to: "./user-store", icon: "storefront-outline" },
+  { label: "שליחת פידבק", to: "./user-feedback", icon: "pencil-outline" },
 ];
 
 export default function MainScreen() {
   return (
     <LinearGradient colors={["#fafbff", "#f5f7fa"]} style={styles.container}>
-      <Text style={styles.title}>ברוכים הבאים לאגודת הסטודנטים🎉</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>ברוכים הבאים לאגודת הסטודנטים</Text>
+          <Ionicons
+            name="rocket-outline"
+            size={32}
+            color="#4f6cf7"
+            style={styles.titleIcon}
+          />
+        </View>
 
-      <View style={styles.menu}>
-        {MENU_ITEMS.map((item) => (
-          <CardButton key={item.to} label={item.label} to={item.to} />
-        ))}
-      </View>
+        <View style={styles.menu}>
+          {MENU_ITEMS.map((item) => (
+            <CardButton key={item.to} {...item} />
+          ))}
+        </View>
+      </ScrollView>
     </LinearGradient>
   );
 }
 
-/* כפתור‑כרטיס */
-function CardButton({ label, to }: { label: string; to: string }) {
+function CardButton({
+  label,
+  to,
+  icon,
+}: {
+  label: string;
+  to: string;
+  icon: string;
+}) {
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && { transform: [{ scale: 0.98 }] },
-      ]}
-      android_ripple={{ color: "rgba(0,0,0,0.15)" }}
       onPress={() => router.push(to as any)}
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      android_ripple={{ color: "rgba(0,0,0,0.15)" }}
     >
       <LinearGradient
-        colors={["#4f6cf7", "#d94645"]} /* כחול → אדום עדין */
+        colors={["#4f6cf7", "#d94645"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.cardBg}
       >
+        <Ionicons
+          name={icon as any}
+          size={24}
+          color="#fff"
+          style={styles.cardIcon}
+        />
         <Text style={styles.cardLabel}>{label}</Text>
       </LinearGradient>
     </Pressable>
@@ -53,40 +92,62 @@ function CardButton({ label, to }: { label: string; to: string }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    backgroundColor: "#fafbff",
+  },
+  scrollContent: {
     alignItems: "center",
+    paddingBottom: 40,
+    minHeight: SCREEN_HEIGHT + 20,
+  },
+  titleContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 30,
-    fontWeight: "600",
-    marginBottom: 40,
+    fontSize: 20,
+    fontWeight: "700",
     color: "#333",
   },
+  titleIcon: {
+    marginLeft: 8,
+  },
   menu: {
-    width: "88%",
-    gap: 18,
+    width: "90%",
+    gap: 16,
   },
   card: {
     borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 12,
     ...Platform.select({
       ios: {
         shadowColor: "#000",
-        shadowOpacity: 0.13,
-        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 3 },
         shadowRadius: 6,
       },
       android: { elevation: 4 },
     }),
   },
   cardBg: {
-    borderRadius: 16,
-    paddingVertical: 18,
+    flexDirection: "row",
     alignItems: "center",
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+  },
+  cardIcon: {
+    marginRight: 12,
   },
   cardLabel: {
     color: "#fff",
     fontSize: 20,
-    fontWeight: "500",
-    letterSpacing: 0.5,
+    fontWeight: "600",
+  },
+  cardPressed: {
+    transform: [{ scale: 0.98 }],
+    opacity: 0.9,
   },
 });

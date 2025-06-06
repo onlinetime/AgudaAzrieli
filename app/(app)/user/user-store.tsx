@@ -1,5 +1,4 @@
-// app/(drawer)/user-store.tsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   StyleSheet,
   FlatList,
@@ -7,17 +6,24 @@ import {
   Pressable,
   Platform,
   StatusBar,
-  View as RNView,
+  View,
+  ActivityIndicator,
+  TextInput,
+  Animated,
+  Dimensions,
+  Text,
+  ScrollView,
 } from "react-native";
-import { View, Text } from "../../../components/Themed";
 import { useTheme } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../../firebase";
+import { router } from "expo-router";
 
-// טיפוס של חנות
-type Store = {
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+interface Store {
   id: string;
   name: string;
   address: string;
@@ -26,11 +32,16 @@ type Store = {
   discount: string;
   phoneNumber: string;
   picture?: string;
-};
+}
 
 export default function UserStoreList() {
   const { colors } = useTheme();
   const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const unsub = onSnapshot(
@@ -41,83 +52,183 @@ export default function UserStoreList() {
           ...(doc.data() as Omit<Store, "id">),
         }));
         setStores(data);
+        // extract unique categories + All
+        const uniqueCats = Array.from(new Set(data.map((s) => s.category)));
+        setCategories(["All", ...uniqueCats]);
+        setLoading(false);
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start();
       },
       (error) => {
         console.error("Error fetching stores:", error);
+        setLoading(false);
       }
     );
     return () => unsub();
   }, []);
 
-  const renderItem = ({ item }: { item: Store }) => (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        {
-          backgroundColor: pressed ? colors.border : colors.card,
-        },
-      ]}
-      android_ripple={{ color: colors.border }}
-    >
-      {item.picture ? (
-        <Image
-          source={{ uri: item.picture }}
-          style={styles.cardImage}
-          resizeMode="cover"
-        />
-      ) : null}
-      <View style={styles.cardContent}>
-        <Text style={[styles.cardTitle, { color: "black" }]}>{item.name}</Text>
-        <Text style={[styles.cardSubtitle, { color: "black" }]}>
-          {item.address}
-        </Text>
-        <Text style={[styles.cardSmall, { color: "black" }]}>
-          קטגוריה: {item.category}
-        </Text>
-        <Text style={[styles.cardSmall, { color: "black" }]}>
-          הנחה: {item.discount}
-        </Text>
-        <Text style={[styles.cardSmall, { color: "black" }]}>
-          כתובת: {item.address}
-        </Text>
-        <Text style={[styles.cardSmall, { color: "black" }]}>
-          טלפון: {item.phoneNumber}
-        </Text>
-        <Text style={[styles.cardSmall, { color: "black" }]}>
-          תיאור: {item.description}
-        </Text>
+  // filter by search + category
+  const filtered = stores.filter((store) => {
+    const matchesSearch = store.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
+    const matchesCategory =
+      selectedCategory === "All" || store.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const renderStore = ({ item }: { item: Store }) => (
+    <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
+      <Pressable
+        style={({ pressed }) => [
+          styles.cardPressable,
+          pressed && styles.cardPressed,
+        ]}
+      >
+        {item.picture ? (
+          <Image source={{ uri: item.picture }} style={styles.image} />
+        ) : (
+          <View style={styles.imagePlaceholder}>
+            <Ionicons name="image-outline" size={40} color="#BBB" />
+          </View>
+        )}
+        <View style={styles.content}>
+          <View style={styles.headerRow}>
+            <Text style={styles.title}>{item.name}</Text>
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{item.category}</Text>
+            </View>
+          </View>
+          <Text
+            style={styles.description}
+            numberOfLines={2}
+            ellipsizeMode="tail"
+          >
+            {item.description}
+          </Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="location-sharp" size={14} color={colors.text} />
+            <Text style={styles.infoText}>{item.address}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Ionicons name="call-outline" size={14} color={colors.text} />
+            <Text style={styles.infoText}>{item.phoneNumber}</Text>
+          </View>
+        </View>
+      </Pressable>
+      <View style={styles.footerRow}>
+        <LinearGradient
+          colors={["#FDE047", "#FACC15"]}
+          style={styles.discountBadge}
+        >
+          <Text style={styles.discountText}>-{item.discount}%</Text>
+        </LinearGradient>
       </View>
-    </Pressable>
+    </Animated.View>
   );
+
+  console.log(categories);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* כותרת ראשית */}
       <LinearGradient
         colors={[colors.primary, colors.background]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.header}
       >
-        <Text style={styles.headerText}>רשימת חנויות</Text>
+        <View style={styles.headerContent}>
+          <Ionicons
+            name="cart-outline"
+            size={28}
+            color="#fff"
+            style={styles.headerIcon}
+          />
+          <Text style={styles.headerText}>רשימת חנויות</Text>
+        </View>
       </LinearGradient>
 
-      {/* רשימת חנויות */}
-      <FlatList
-        data={stores}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* search input */}
+      <View style={styles.searchContainer}>
+        <Ionicons
+          name="search-outline"
+          size={20}
+          color="#888"
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={[styles.searchInput, { backgroundColor: colors.card }]}
+          placeholder="חפש חנות..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+          clearButtonMode="while-editing"
+        />
+      </View>
+
+      {/* dynamic category filter */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterContainer}
+        contentContainerStyle={styles.filterContent}
+      >
+        {categories.map((cat) => (
+          <Pressable
+            key={cat}
+            style={[
+              styles.filterChip,
+              selectedCategory === cat && {
+                backgroundColor: colors.primary,
+                borderColor: colors.primary,
+              },
+            ]}
+            onPress={() => setSelectedCategory(cat)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                selectedCategory === cat
+                  ? { color: "#fff" }
+                  : { color: "#111827" },
+              ]}
+            >
+              {cat}
+            </Text>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {loading ? (
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+          style={styles.loader}
+        />
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id}
+          renderItem={renderStore}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="storefront-outline" size={60} color="#BBB" />
+              <Text style={styles.emptyText}>לא נמצאו חנויות</Text>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
 
-const CARD_WIDTH =
-  Platform.OS === "web"
-    ? 600
-    : Math.round((Platform.OS === "android" ? 360 : 360) * 0.9);
+const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 360);
 
 const styles = StyleSheet.create({
   container: {
@@ -127,55 +238,117 @@ const styles = StyleSheet.create({
   header: {
     paddingVertical: 20,
     alignItems: "center",
-    marginBottom: 12,
+    justifyContent: "center",
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 5,
   },
+  headerContent: { flexDirection: "row", alignItems: "center" },
+  headerIcon: { marginRight: 8 },
   headerText: {
-    fontSize: 24,
-    fontWeight: "600",
+    fontSize: 26,
+    fontWeight: "700",
     color: "#fff",
+    letterSpacing: 1,
+    textShadowColor: "rgba(0,0,0,0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
-  list: {
+  searchContainer: {
+    flexDirection: "row",
     alignItems: "center",
-    paddingBottom: 20,
+    margin: 16,
+    borderRadius: 24,
+    overflow: "hidden",
+    elevation: 2,
   },
+  searchIcon: { paddingHorizontal: 12 },
+  searchInput: { flex: 1, height: 40, fontSize: 16, paddingRight: 12 },
+  filterContainer: {
+    maxHeight: 80,
+    marginBottom: 40, // was 24, increase space below filter chips
+    marginTop: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  filterContent: {
+    paddingHorizontal: 24, // was 16
+    alignItems: "center",
+    paddingRight: 32, // add extra space at the end
+  },
+  filterChip: {
+    paddingHorizontal: 24, // more space for all chips
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginRight: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: 40, // ensures height is consistent
+    borderWidth: 1,
+    borderColor: "#E5E7EB", // light border for unselected
+    backgroundColor: "#fff", // white background for unselected
+  },
+  filterText: {
+    fontSize: 16, // increased from 14
+    fontWeight: "500",
+  },
+  list: { alignItems: "center", paddingBottom: 24 },
+  loader: { marginTop: 40 },
   card: {
     width: CARD_WIDTH,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: "hidden",
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: { elevation: 4 },
-      web: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-    }),
-  },
-  cardImage: {
-    width: "100%",
-    height: 140,
-  },
-  cardContent: {
-    padding: 12,
+    marginVertical: 4, // was 8, reduce vertical margin between cards
+    borderRadius: 16,
     backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+  cardPressable: { borderRadius: 16, overflow: "hidden" },
+  cardPressed: { opacity: 0.8 },
+  image: { width: "100%", height: 160 },
+  imagePlaceholder: {
+    width: "100%",
+    height: 160,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
   },
-  cardSubtitle: {
-    fontSize: 15,
-    marginTop: 4,
+  content: { padding: 22 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  cardSmall: {
-    fontSize: 13,
-    marginTop: 6,
+  title: { fontSize: 18, fontWeight: "600", color: "#111827", flex: 1 },
+  badge: {
+    backgroundColor: "#E5E7EB",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
+  badgeText: { fontSize: 12, fontWeight: "500", color: "#374151" },
+  description: { fontSize: 14, color: "#6B7280", marginBottom: 12 },
+  infoRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
+  infoText: { fontSize: 13, color: "#4B5563", marginLeft: 6, flex: 1 },
+  footerRow: {
+    padding: 12,
+    borderTopWidth: 1,
+    borderColor: "#F3F4F6",
+    alignItems: "flex-start",
+  },
+  discountBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  discountText: { color: "#1F2937", fontWeight: "600" },
+  emptyContainer: { marginTop: 60, alignItems: "center" },
+  emptyText: { marginTop: 12, fontSize: 16, color: "#9CA3AF" },
 });

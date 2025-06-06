@@ -9,11 +9,21 @@ import {
   Keyboard,
   TouchableWithoutFeedback,
 } from "react-native";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../../firebase"; // adjust path if needed
-import { query, where, orderBy, limit, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  getDoc,
+  doc,
+} from "firebase/firestore";
+import { db } from "../../../firebase";
 
-const userId = "USER_ID_HERE"; // Replace with actual user id from auth context
+const userId = "USER_ID_HERE"; // Replace from auth context
 
 export default function UserFeedback() {
   const [content, setContent] = useState("");
@@ -27,7 +37,7 @@ export default function UserFeedback() {
     setLoading(true);
 
     try {
-      // Check for last feedback
+      // Throttle: only one feedback per week
       const feedbackQuery = query(
         collection(db, "feedback"),
         where("userId", "==", userId),
@@ -36,31 +46,44 @@ export default function UserFeedback() {
       );
       const feedbackSnapshot = await getDocs(feedbackQuery);
       if (!feedbackSnapshot.empty) {
-        const lastFeedback = feedbackSnapshot.docs[0].data();
-        const lastCreatedAt = lastFeedback.creatAt?.toDate?.();
+        const lastCreatedAt = feedbackSnapshot.docs[0].data().creatAt?.toDate();
         if (lastCreatedAt) {
-          const now = new Date();
           const diffDays =
-            (now.getTime() - lastCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
+            (Date.now() - lastCreatedAt.getTime()) / (1000 * 60 * 60 * 24);
           if (diffDays < 7) {
-            setLoading(false);
             Alert.alert("You can only send feedback once a week.");
+            setLoading(false);
             return;
           }
         }
       }
 
+      // Fetch user's name from 'users' collection
+      let userName = "Anonymous";
+      const userDoc = await getDoc(doc(db, "users", userId));
+      if (userDoc.exists()) {
+        const data = userDoc.data();
+        if (data.firstName || data.lastName) {
+          userName = `${data.firstName || ""} ${data.lastName || ""}`.trim();
+        }
+      }
+
+      // Submit feedback
       await addDoc(collection(db, "feedback"), {
         content,
         userId,
+        userName,
         adminResponse: "",
         creatAt: serverTimestamp(),
       });
+
       setContent("");
-      Alert.alert("Thank you!", "Your feedback has been submitted.");
+      Alert.alert("תודה!", "המשוב הוגש בהצלחה.");
     } catch (error) {
-      Alert.alert("Error", "Could not send more then one feedback per week.");
+      console.error(error);
+      Alert.alert("Error", "Could not send feedback.");
     }
+
     setLoading(false);
   };
 
@@ -71,6 +94,7 @@ export default function UserFeedback() {
         <Text style={styles.subtitle}>
           Let us know your thoughts or suggestions.
         </Text>
+
         <TextInput
           style={styles.input}
           placeholder="Type your feedback here..."
@@ -79,6 +103,7 @@ export default function UserFeedback() {
           multiline
           editable={!loading}
         />
+
         <TouchableOpacity
           style={[styles.button, loading && { backgroundColor: "#aaa" }]}
           onPress={handleSubmit}

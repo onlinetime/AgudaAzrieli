@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail,
 } from "firebase/auth";
 import { router } from "expo-router";
-import { db } from "../../firebase";
+import { db, auth } from "../../firebase";
 import { doc, getDoc } from "firebase/firestore";
 
 export default function Login() {
@@ -29,12 +29,12 @@ export default function Login() {
     console.debug("Email:", email);
     console.debug("Password (length):", password.length);
 
-    let auth;
+    //let auth;
     try {
       console.debug("Importing signInWithEmailAndPassword...");
-      const mod = await import("firebase/auth");
-      console.debug("Module keys:", Object.keys(mod));
-      auth = getFirebaseAuth();
+      // const mod = await import("firebase/auth");
+      //console.debug("Module keys:", Object.keys(mod));
+      //auth = getFirebaseAuth();
       console.debug("Auth instance:", auth);
       console.debug("Auth.app:", auth.app);
     } catch (e: any) {
