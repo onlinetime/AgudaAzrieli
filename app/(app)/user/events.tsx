@@ -56,14 +56,17 @@ export default function EventsScreen() {
   // parse, filter upcoming, sort
   const events = useMemo<Event[]>(() => {
     const now = new Date();
-    return rawEvents
-      .map((e) => ({
-        ...e,
-        start: parseDate(e.startDate),
-        end: parseDate(e.endDate),
-      }))
-      .filter((e) => e.start >= now)
-      .sort((a, b) => a.start.getTime() - b.start.getTime());
+    return (
+      rawEvents
+        .map((e) => ({
+          ...e,
+          start: parseDate(e.startDate),
+          end: parseDate(e.endDate),
+        }))
+        //.filter((e) => e.start >= now)
+        .filter((e) => isNaN(e.start.getTime()) || e.start >= now)
+        .sort((a, b) => a.start.getTime() - b.start.getTime())
+    );
   }, [rawEvents]);
 
   const addToCalendar = async (ev: Event) => {
