@@ -27,6 +27,11 @@ const MENU_ITEMS = [
   },
   { label: "רשימת חנויות", to: "./user-store", icon: "storefront-outline" },
   { label: "שליחת פידבק", to: "./user-feedback", icon: "pencil-outline" },
+  {
+    label: "איסוף מתנה",
+    to: "./ClaimGift",
+    icon: "gift-outline",
+  },
 ];
 
 export default function MainScreen() {

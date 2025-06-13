@@ -30,6 +30,21 @@ const ADMIN_ACTIONS = [
     to: "/admin/add-student-card",
     icon: "school-outline",
   },
+  {
+    label: "העלאת קובץ משתמשים ",
+    to: "/admin/upload-users-file",
+    icon: "cloud-upload-outline",
+  },
+  {
+    label: "זכאות למתנה",
+    to: "/admin/GiftVerify",
+    icon: "gift-outline",
+  },
+  {
+    label: "יצירת מתנה",
+    to: "/admin/uploadGift",
+    icon: "gift-outline",
+  },
 ];
 
 export default function AdminHome() {
@@ -51,7 +66,7 @@ export default function AdminHome() {
         contentContainerStyle={styles.menu}
         showsVerticalScrollIndicator={false}
       >
-        {ADMIN_ACTIONS.map(act => (
+        {ADMIN_ACTIONS.map((act) => (
           <CardButton key={act.to} {...act} />
         ))}
 
@@ -140,9 +155,7 @@ function CardButton({
       android_ripple={{ color: "rgba(0,0,0,0.1)" }}
     >
       <LinearGradient
-        colors={
-          isSubButton ? ["#f0f0f0", "#e8e8e8"] : ["#fafbff", "#f5f7fa"]
-        }
+        colors={isSubButton ? ["#f0f0f0", "#e8e8e8"] : ["#fafbff", "#f5f7fa"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.cardBg, isSubButton && styles.subCardBg]}
@@ -179,8 +192,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#fff",
-    paddingTop:
-      Platform.OS === "android" ? StatusBar.currentHeight || 50 : 0,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 50 : 0,
   },
   headerBar: {
     paddingVertical: 28,

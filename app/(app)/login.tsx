@@ -30,18 +30,18 @@ export default function Login() {
     console.debug("Password (length):", password.length);
 
     //let auth;
-    try {
-      console.debug("Importing signInWithEmailAndPassword...");
-      // const mod = await import("firebase/auth");
-      //console.debug("Module keys:", Object.keys(mod));
-      //auth = getFirebaseAuth();
-      console.debug("Auth instance:", auth);
-      console.debug("Auth.app:", auth.app);
-    } catch (e: any) {
-      console.error("❌ Error during getFirebaseAuth():", e, e.code, e.message);
-      setMessage(`Debug: auth init failed: ${e.message}`);
-      return;
-    }
+    // try {
+    //   console.debug("Importing signInWithEmailAndPassword...");
+    //   // const mod = await import("firebase/auth");
+    //   //console.debug("Module keys:", Object.keys(mod));
+    //   //auth = getFirebaseAuth();
+    //   console.debug("Auth instance:", auth);
+    //   console.debug("Auth.app:", auth.app);
+    // } catch (e: any) {
+    //   console.error("❌ Error during getFirebaseAuth():", e, e.code, e.message);
+    //   setMessage(`Debug: auth init failed: ${e.message}`);
+    //   return;
+    // }
 
     // trim and validate
     const e = email.trim();
@@ -114,6 +114,14 @@ export default function Login() {
 
       <View style={styles.buttonContainer}>
         <Button title="Login" onPress={handleLogin} />
+      </View>
+
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Sign In (First Time)"
+          onPress={() => router.replace("./first-signin")}
+          color="#4CAF50"
+        />
       </View>
 
       {message.length > 0 && <Text style={styles.message}>{message}</Text>}
