@@ -18,7 +18,13 @@
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
     "@react-native-async-storage/async-storage": "2.1.2",
+<<<<<<< HEAD
     "@react-native-picker/picker": "2.11.0",
+=======
+    "@react-native-firebase/app": "^22.0.0",
+    "@react-native-firebase/auth": "^22.0.0",
+    "@react-native-firebase/firestore": "^22.0.0",
+>>>>>>> 3126498e541a08da60489832cbc3f20c82a22fb2
     "@react-navigation/bottom-tabs": "^7.3.11",
     "@react-navigation/drawer": "^7.3.10",
     "@react-navigation/native": "^7.1.7",
@@ -27,13 +33,19 @@
     "dotenv": "^16.5.0",
     "expo": "~53.0.5",
     "expo-blur": "~14.1.4",
+<<<<<<< HEAD
     "expo-calendar": "~14.1.4",
+=======
+>>>>>>> 3126498e541a08da60489832cbc3f20c82a22fb2
     "expo-constants": "~17.1.5",
     "expo-firebase-app": "^2.0.0",
     "expo-firebase-core": "^6.0.0",
     "expo-font": "~13.3.0",
     "expo-haptics": "~14.1.4",
+<<<<<<< HEAD
     "expo-image-picker": "~16.1.4",
+=======
+>>>>>>> 3126498e541a08da60489832cbc3f20c82a22fb2
     "expo-linear-gradient": "~14.1.4",
     "expo-linking": "~7.1.4",
     "expo-router": "~5.0.4",
@@ -42,9 +54,15 @@
     "expo-symbols": "~0.4.4",
     "expo-system-ui": "~5.0.7",
     "expo-web-browser": "~14.1.6",
+<<<<<<< HEAD
     "firebase": "^11.7.3",
     "nativewind": "^4.1.23",
     "react": "^19.0.0",
+=======
+    "firebase": "^11.6.1",
+    "nativewind": "^4.1.23",
+    "react": "19.0.0",
+>>>>>>> 3126498e541a08da60489832cbc3f20c82a22fb2
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
     "react-native-gesture-handler": "~2.25.0",
@@ -54,8 +72,12 @@
     "react-native-web": "0.20.0",
     "react-native-webview": "13.13.5",
     "tailwind-merge": "^3.2.0",
+<<<<<<< HEAD
     "tailwindcss": "^3.4.17",
     "@react-native-community/datetimepicker": "8.3.0"
+=======
+    "tailwindcss": "^3.4.17"
+>>>>>>> 3126498e541a08da60489832cbc3f20c82a22fb2
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
