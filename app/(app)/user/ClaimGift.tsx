@@ -42,7 +42,8 @@ export default function GiftClaimScreen() {
       const userRef = doc(db, "users", user.email);
       const userSnap = await getDoc(userRef);
       if (userSnap.exists()) {
-        setUserDoc(userSnap.data());
+        const user = { ...(userSnap.data() as any), id: userSnap.id };
+        setUserDoc(user);
         setClaimCode(userSnap.data().claimCode);
       }
       // Fetch the first gift in the collection
@@ -130,7 +131,8 @@ export default function GiftClaimScreen() {
       </SafeAreaView>
     );
   }
-
+  // After fetching the gift
+  console.log("Gift data:", gift);
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -153,6 +155,7 @@ export default function GiftClaimScreen() {
               resizeMode="contain"
             />
           ) : null}
+
           <TouchableOpacity style={styles.button} onPress={claimGift}>
             <Text style={styles.buttonText}>דרוש מתנה</Text>
           </TouchableOpacity>

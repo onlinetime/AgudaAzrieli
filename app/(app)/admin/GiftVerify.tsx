@@ -157,6 +157,9 @@ export default function AdminVerificationScreen() {
           <View style={styles.card}>
             <Text style={styles.cardTitle}>פרטי משתמש</Text>
             <Text style={styles.cardText}>מזהה: {userDoc.id}</Text>
+            <Text style={styles.cardText}>
+              שם: {userDoc.firstName} {userDoc.lastName}
+            </Text>
             <Text style={styles.cardText}>קוד: {userDoc.claimCode}</Text>
             {alreadyVerified ? (
               <Text style={styles.verified}>המתנה כבר סומנה כמחולקת!</Text>

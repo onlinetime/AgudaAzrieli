@@ -97,26 +97,47 @@ export default function UploadUsersFile() {
 
   // Helper function to upload users
   const uploadUsers = async (users: any[]) => {
+    // Filter users with required fields and unique IDs in the file
+    const filteredUsers = users.filter(
+      (u) => u["שם פרטי"] && u["שם משפחה"] && u["תעודת זהות"]
+    );
+    const uniqueUsersMap: { [id: string]: any } = {};
+    filteredUsers.forEach((u) => {
+      uniqueUsersMap[String(u["תעודת זהות"])] = u;
+    });
+    const uniqueUsers = Object.values(uniqueUsersMap);
+    const ids = uniqueUsers.map((u) => String(u["תעודת זהות"]));
+
+    // Query Firestore for existing IDs (in batches of 10)
+    let existingIds: string[] = [];
+    for (let i = 0; i < ids.length; i += 10) {
+      const batch = ids.slice(i, i + 10);
+      const q = query(collection(db, "users"), where("id", "in", batch));
+      const snapshot = await getDocs(q);
+      snapshot.forEach((doc) => {
+        existingIds.push(doc.data().id);
+      });
+    }
+
+    // Filter out users whose IDs already exist in Firestore
+    const newUsers = uniqueUsers.filter(
+      (u) => !existingIds.includes(String(u["תעודת זהות"]))
+    );
+
     let added = 0;
-    for (const user of users) {
-      if (!user["שם פרטי"] || !user["שם משפחה"] || !user["תעודת זהות"])
-        continue;
-      const q = query(
-        collection(db, "users"),
-        where("id", "==", user["תעודת זהות"])
-      );
-      const querySnapshot = await getDocs(q);
-      if (querySnapshot.empty) {
-        await addDoc(collection(db, "users"), {
-          firstName: user["שם פרטי"],
-          lastName: user["שם משפחה"],
-          id: String(user["תעודת זהות"]), // Ensure ID is saved as string
-        });
-        added++;
-      }
+    for (const user of newUsers) {
+      await addDoc(collection(db, "users"), {
+        firstName: user["שם פרטי"],
+        lastName: user["שם משפחה"],
+        id: String(user["תעודת זהות"]),
+      });
+      added++;
     }
     setLoading(false);
-    Alert.alert("העלאה הושלמה", `הועלו ${added} משתמשים חדשים`);
+    Alert.alert(
+      "העלאה הושלמה",
+      `הועלו ${added} משתמשים חדשים. ${uniqueUsers.length - added} כבר קיימים במערכת.`
+    );
   };
 
   return (

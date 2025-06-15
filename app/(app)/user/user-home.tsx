@@ -19,10 +19,10 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MENU_ITEMS = [
   { label: "כרטיס סטודנט", to: "../student-card", icon: "card-outline" },
   { label: "אירועים קרובים", to: "./events", icon: "calendar-outline" },
-  { label: "הודעות", to: "/(drawer)/inbox", icon: "mail-outline" },
+  { label: "הודעות", to: "./inbox", icon: "mail-outline" },
   {
     label: "פורומים",
-    to: "/(drawer)/forums",
+    to: "./forums",
     icon: "chatbubble-ellipses-outline",
   },
   { label: "רשימת חנויות", to: "./user-store", icon: "storefront-outline" },
