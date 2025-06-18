@@ -23,11 +23,8 @@ export default function MainScreen() {
     { label: t("studentCard"), to: "../student-card", icon: "card-outline" },
     { label: t("upcomingEvents"), to: "./events", icon: "calendar-outline" },
     { label: t("inbox"), to: "/(drawer)/inbox", icon: "mail-outline" },
-    {
-      label: t("forums"),
-      to: "/(drawer)/forums",
-      icon: "chatbubble-ellipses-outline",
-    },
+    ,
+    { label: "פורומים",        to: "/forums",         icon: "chatbubble-ellipses-outline" }, // ← fixed here!
     { label: t("storesList"), to: "./user-store", icon: "storefront-outline" },
     { label: t("sendFeedback"), to: "./user-feedback", icon: "pencil-outline" },
     { label: t("settings"), to: "./user-settings", icon: "settings-outline" },

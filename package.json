@@ -63,7 +63,8 @@
     "xlsx": "^0.18.5",
     "expo-document-picker": "~13.1.5",
     "expo-file-system": "~18.1.10",
-    "expo-camera": "~16.1.8"
+    "expo-camera": "~16.1.8",
+    "@react-native-community/datetimepicker": "8.3.0"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
