@@ -1,3 +1,4 @@
+// app/(app)/user/user-home.tsx
 import React from "react";
 import {
   View,
@@ -16,18 +17,26 @@ import { useTranslation } from "react-i18next";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-export default function MainScreen() {
+export default function UserHomeScreen() {
   const { t } = useTranslation();
 
+  /**  
+   * ! אל תשנו שמות קבצים / נתיבים כאן בלי לעדכן גם את מבנה-התיקיות  
+   *   כל ‎to‎ הוא נתיב יחסי לתיקייה ‎user‎ (לכן “./”)
+   */
   const MENU_ITEMS = [
-    { label: t("studentCard"), to: "../student-card", icon: "card-outline" },
-    { label: t("upcomingEvents"), to: "./events", icon: "calendar-outline" },
-    { label: t("inbox"), to: "/(drawer)/inbox", icon: "mail-outline" },
-    ,
-    { label: "פורומים",        to: "/forums",         icon: "chatbubble-ellipses-outline" }, // ← fixed here!
-    { label: t("storesList"), to: "./user-store", icon: "storefront-outline" },
-    { label: t("sendFeedback"), to: "./user-feedback", icon: "pencil-outline" },
-    { label: t("settings"), to: "./user-settings", icon: "settings-outline" },
+    { label: t("studentCard"),      to: "../student-card",  icon: "card-outline" },
+    { label: t("upcomingEvents"),   to: "./events",         icon: "calendar-outline" },
+    { label: t("inbox"),            to: "/(drawer)/inbox",  icon: "mail-outline" },
+    { label: "פורומים",        to: "/forums",         icon: "chatbubble-ellipses-outline" },
+
+    // Israel-branch additions
+    { label: t("collectGift", "איסוף מתנה"),   to: "./ClaimGift",     icon: "gift-outline" },
+
+    { label: t("storesList"),       to: "./user-store",     icon: "storefront-outline" },
+    { label: t("sendFeedback"),     to: "./user-feedback",  icon: "pencil-outline" },
+    { label: t("settings"),         to: "./user-settings",  icon: "settings-outline" },
+   
   ];
 
   return (
@@ -37,13 +46,8 @@ export default function MainScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{t("welcomeTitle")}</Text>
-          <Ionicons
-            name="rocket-outline"
-            size={32}
-            color="#4f6cf7"
-            style={styles.titleIcon}
-          />
+          <Text style={styles.title}>{t("welcomeTitle", "ברוכים הבאים לאגודת הסטודנטים")}</Text>
+          <Ionicons name="rocket-outline" size={32} color="#4f6cf7" style={styles.titleIcon} />
         </View>
 
         <View style={styles.menu}>
@@ -77,12 +81,7 @@ function CardButton({
         end={{ x: 1, y: 0 }}
         style={styles.cardBg}
       >
-        <Ionicons
-          name={icon as any}
-          size={24}
-          color="#fff"
-          style={styles.cardIcon}
-        />
+        <Ionicons name={icon as any} size={24} color="#fff" style={styles.cardIcon} />
         <Text style={styles.cardLabel}>{label}</Text>
       </LinearGradient>
     </Pressable>
@@ -114,7 +113,12 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: 12,
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 3 }, shadowRadius: 6 },
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 3 },
+        shadowRadius: 6,
+      },
       android: { elevation: 4 },
     }),
   },

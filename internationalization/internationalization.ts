@@ -13,6 +13,7 @@ const resources = {
       hebrew: "עברית",
       english: "English",
       darkMode: "מצב חשוך",
+      
 
       /* ── Home (user) ── */
       welcomeTitle: "ברוכים הבאים לאגודת הסטודנטים",
@@ -22,11 +23,13 @@ const resources = {
       forums: "פורומים",
       storesList: "רשימת חנויות",
       sendFeedback: "שליחת פידבק",
+      collectGift: "איסוף מתנה", 
 
       /* ── Home (admin) ── */
       welcomeAdmin: "ברוך הבא אדמין יקר",
       feedback: "צפייה בפידבקים",
-      forumPost: "פרסום בפורום",
+      forumPost: "אישור פורום",
+
       addCard: "הוסף כרטיס סטודנט",
       eventManagement: "ניהול אירועים",
       storeManagement: "ניהול חנויות",

@@ -49,4 +49,4 @@ export const getFirebaseAuth = () => {
   return cachedAuth;
 };
 const auth = getFirebaseAuth();
-export { db, auth };
+export { db, auth, app };

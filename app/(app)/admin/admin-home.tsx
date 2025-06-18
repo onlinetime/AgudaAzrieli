@@ -1,5 +1,5 @@
 // app/(app)/admin/admin-home.tsx
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -17,147 +17,236 @@ import { useTranslation } from "react-i18next";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
+/** תפריט ראשי – כל הכפתורים “השטוחים” (בלי תפריטי-משנה) **/
+const MAIN_MENU = [
+  // ----- מתנות
+  { key: "createGift",        to: "./uploadGift",          icon: "gift-outline" },
+  { key: "giftEligibility",   to: "./GiftVerify",          icon: "checkmark-done-outline" },
+  { key: "uploadUsers",       to: "./upload-users-file",   icon: "document-attach-outline" },
+
+  // ----- מערכת “ישנה”
+  { key: "feedback", to: "/admin/feedback-list", icon: "chatbubble-outline" },
+
+  { key: "forumPost",         to: "./admin-forum",         icon: "help-circle-outline" },
+  { key: "addCard", to: "/student-card", icon: "cube-outline" },
+
+  
+  
+
+  // ----- הגדרות
+  { key: "settings",          to: "./admin-settings",      icon: "settings-outline" },
+] as const;
+
+/** כפתורי-משנה למסכי אירועים / חנויות (היו אצל Israel) */
+const EVENT_SUB = [
+  { label: "הוסף אירוע",     to: "./admin/add-event",   icon: "add-circle-outline" },
+  { label: "אירועים פתוחים", to: "./admin/open-events", icon: "time-outline" },
+];
+const STORE_SUB = [
+  { label: "הוסף חנות",      to: "./admin/add-store",   icon: "add-circle-outline" },
+  { label: "רשימת חנויות",   to: "./admin/list-stores", icon: "list-outline" },
+];
+
 export default function AdminHomeScreen() {
   const { t } = useTranslation();
-
-  /** מסכי הניווט החדשים + הישנים  */
-  const MENU_ITEMS = [
-    // ----- מתנות
-    {
-      label: t("createGift"),
-      to: "./uploadGift", // UploadGift.tsx
-      icon: "gift-outline",
-    },
-    {
-      label: t("giftEligibility"),
-      to: "./GiftVerify", // GiftVerify.tsx
-      icon: "checkmark-done-outline",
-    },
-    {
-      label: t("uploadUsers"),
-      to: "./upload-users-file", // upload-users-file.tsx
-      icon: "document-attach-outline",
-    },
-
-    // ----- תפריט אדמין “הישן”
-    { label: t("feedback"), to: "./admin-feedback", icon: "chatbubble-outline" },
-    { label: t("forumPost"), to: "./admin-forum", icon: "help-circle-outline" },
-    { label: t("addCard"), to: "./admin-add-card", icon: "cube-outline" },
-    {
-      label: t("eventManagement"),
-      to: "./admin-events",
-      icon: "calendar-outline",
-    },
-    {
-      label: t("storeManagement"),
-      to: "./admin-store",
-      icon: "storefront-outline",
-    },
-
-    // אחרון – הגדרות
-    { label: t("settings"), to: "./admin-settings", icon: "settings-outline" },
-  ];
+  const [showEvents, setShowEvents] = useState(false);
+  const [showStores, setShowStores] = useState(false);
 
   return (
-    <LinearGradient colors={["#fafbff", "#f5f7fa"]} style={styles.container}>
+    <View style={styles.flex}>
+      {/* 🟦 סרגל עליון – כמו ב-Israel */}
+      <LinearGradient
+        colors={["#4f6cf7", "#d94645"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.headerBar}
+      >
+        <Text style={styles.headerText}>{t("welcomeAdmin")}</Text>
+      </LinearGradient>
+
+      {/* 🔽 תפריט גלילה */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>{t("welcomeAdmin")}</Text>
-          <Ionicons
-            name="construct-outline"
-            size={32}
-            color="#4f6cf7"
-            style={styles.titleIcon}
-          />
-        </View>
+        {/* כפתורי-על */}
+        {MAIN_MENU.map(({ key, to, icon }) => (
+          <CardButton key={key} label={t(key)} icon={icon} to={to} />
+        ))}
 
-        <View style={styles.menu}>
-          {MENU_ITEMS.map((item) => (
-            <CardButton key={item.to} {...item} />
-          ))}
-        </View>
+        {/* --- ניהול אירועים --- */}
+        <CardButton
+          label={t("eventManagement")}
+          icon="calendar-outline"
+          isToggle
+          toggled={showEvents}
+          onPress={() => setShowEvents((p) => !p)}
+        />
+        {showEvents && (
+          <View style={styles.subMenu}>
+            {EVENT_SUB.map((b) => (
+              <CardButton key={b.to} {...b} isSub />
+            ))}
+          </View>
+        )}
+
+        {/* --- ניהול חנויות --- */}
+        <CardButton
+          label={t("storeManagement")}
+          icon="storefront-outline"
+          isToggle
+          toggled={showStores}
+          onPress={() => setShowStores((p) => !p)}
+        />
+        {showStores && (
+          <View style={styles.subMenu}>
+            {STORE_SUB.map((b) => (
+              <CardButton key={b.to} {...b} isSub />
+            ))}
+          </View>
+        )}
       </ScrollView>
-    </LinearGradient>
+    </View>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/*           כפתור כרטיס – ראשי, תת-כפתור או Toggle-קבוצה             */
+/* ------------------------------------------------------------------ */
+type BtnProps = {
+  label: string;
+  to?: string;
+  icon: string;
+  isSub?: boolean;
+  isToggle?: boolean;
+  toggled?: boolean;
+  onPress?: () => void;
+};
 
 function CardButton({
   label,
   to,
   icon,
-}: {
-  label: string;
-  to: string;
-  icon: string;
-}) {
+  isSub = false,
+  isToggle = false,
+  toggled = false,
+  onPress,
+}: BtnProps) {
+  const handle = () => {
+    if (onPress) return onPress();
+    if (to) router.push(to as any);
+  };
+
   return (
     <Pressable
-      onPress={() => router.push(to as any)}
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      android_ripple={{ color: "rgba(0,0,0,0.15)" }}
+      onPress={handle}
+      style={({ pressed }) => [
+        styles.card,
+        isSub && styles.cardSub,
+        pressed && styles.cardPressed,
+      ]}
+      android_ripple={{ color: "rgba(0,0,0,0.12)" }}
     >
       <LinearGradient
-        colors={["#4f6cf7", "#d94645"]}
+        colors={isSub ? ["#f0f0f0", "#e8e8e8"] : ["#fafbff", "#f5f7fa"]}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.cardBg}
+        end={{ x: 1, y: 1 }}
+        style={[styles.cardBg, isSub && styles.cardSubBg]}
       >
         <Ionicons
           name={icon as any}
-          size={24}
-          color="#fff"
+          size={isSub ? 20 : 24}
+          color="#4f4f4f"
           style={styles.cardIcon}
         />
-        <Text style={styles.cardLabel}>{label}</Text>
+        <Text
+          style={[
+            styles.cardLabel,
+            isSub && styles.cardLabelSub,
+            isToggle && toggled && styles.toggledLabel,
+          ]}
+        >
+          {label}
+        </Text>
+        {isToggle && (
+          <Ionicons
+            name={toggled ? "chevron-up-outline" : "chevron-down-outline"}
+            size={20}
+            color="#4f4f4f"
+            style={styles.toggleIcon}
+          />
+        )}
       </LinearGradient>
     </Pressable>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*                              Styles                                 */
+/* ------------------------------------------------------------------ */
 const styles = StyleSheet.create({
-  container: {
+  flex: {
     flex: 1,
+    backgroundColor: "#fff",
     paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-    backgroundColor: "#fafbff",
   },
+
+  /* header */
+  headerBar: {
+    paddingVertical: 28,
+    alignItems: "center",
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 6 }, shadowRadius: 8 },
+      android: { elevation: 6 },
+    }),
+  },
+  headerText: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+
+  /* scroll content */
   scrollContent: {
-    alignItems: "center",
-    paddingBottom: 40,
-    minHeight: SCREEN_HEIGHT + 20,
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+    minHeight: SCREEN_HEIGHT + 40,
   },
-  titleContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 24,
-    marginBottom: 24,
-  },
-  title: { fontSize: 20, fontWeight: "700", color: "#333" },
-  titleIcon: { marginLeft: 8 },
-  menu: { width: "90%", gap: 16 },
+
+  /* card generic */
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: "hidden",
     marginBottom: 12,
     ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOpacity: 0.1,
-        shadowOffset: { width: 0, height: 3 },
-        shadowRadius: 6,
-      },
-      android: { elevation: 4 },
+      ios: { shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 3 }, shadowRadius: 6 },
+      android: { elevation: 3 },
     }),
   },
+  cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
+
   cardBg: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 18,
+    paddingVertical: 20,
     paddingHorizontal: 16,
   },
   cardIcon: { marginRight: 12 },
-  cardLabel: { color: "#fff", fontSize: 20, fontWeight: "600" },
-  cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
+  cardLabel: { fontSize: 20, fontWeight: "600", color: "#4f4f4f", flex: 1 },
+
+  /* sub-buttons */
+  cardSub: { marginLeft: 32, borderRadius: 16 },
+  cardSubBg: { paddingVertical: 16 },
+  cardLabelSub: { fontSize: 18, fontWeight: "500" },
+
+  /* toggle extra */
+  toggledLabel: { color: "#3C7DE5" },
+  toggleIcon: { marginLeft: 8 },
+
+  /* submenu wrapper */
+  subMenu: { marginBottom: 12 },
 });

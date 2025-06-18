@@ -12,6 +12,10 @@ export const HE_EN: Record<string, string> = {
   noStores: "No stores found",
   addToCalendar: "Add to Calendar",
   noUpcomingEvents: "No upcoming events",
+  "איסוף מתנה": "Gift Collection",
+
+
+  
 
   /* 🛑 - הודעות ו-Alert-ים */
   "אין הרשאה": "No permission",
