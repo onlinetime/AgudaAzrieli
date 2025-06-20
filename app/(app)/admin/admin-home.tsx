@@ -17,27 +17,27 @@ import { useTranslation } from "react-i18next";
 
 const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
-/** תפריט ראשי – כל הכפתורים “השטוחים” (בלי תפריטי-משנה) **/
+/** תפריט ראשי – כל הכפתורים “שטוחים” (בלי תפריטי משנה) **/
 const MAIN_MENU = [
   // ----- מתנות
-  { key: "createGift",        to: "./uploadGift",          icon: "gift-outline" },
-  { key: "giftEligibility",   to: "./GiftVerify",          icon: "checkmark-done-outline" },
-  { key: "uploadUsers",       to: "./upload-users-file",   icon: "document-attach-outline" },
+  { key: "createGift",      to: "./uploadGift",        icon: "gift-outline" },
+  { key: "giftEligibility", to: "./GiftVerify",        icon: "checkmark-done-outline" },
+  { key: "uploadUsers",     to: "./upload-users-file", icon: "document-attach-outline" },
 
   // ----- מערכת “ישנה”
-  { key: "feedback", to: "/admin/feedback-list", icon: "chatbubble-outline" },
+  { key: "feedback",        to: "/admin/feedback-list", icon: "chatbubble-outline" },
 
-  { key: "forumPost",         to: "./admin-forum",         icon: "help-circle-outline" },
-  { key: "addCard", to: "/student-card", icon: "cube-outline" },
+  { key: "forumPost",       to: "./admin-forum",       icon: "help-circle-outline" },
+  { key: "addCard",         to: "/student-card",       icon: "cube-outline" },
 
-  
-  
+  // ----- גל רקע (Wave Settings)
+  { key: "waveSettings",    to: "./waveSettings",     icon: "color-palette-outline" },
 
   // ----- הגדרות
-  { key: "settings",          to: "./admin-settings",      icon: "settings-outline" },
+  { key: "settings",        to: "./admin-settings",    icon: "settings-outline" },
 ] as const;
 
-/** כפתורי-משנה למסכי אירועים / חנויות (היו אצל Israel) */
+/** כפתורי־משנה למסכי אירועים / חנויות **/
 const EVENT_SUB = [
   { label: "הוסף אירוע",     to: "./admin/add-event",   icon: "add-circle-outline" },
   { label: "אירועים פתוחים", to: "./admin/open-events", icon: "time-outline" },
@@ -54,7 +54,7 @@ export default function AdminHomeScreen() {
 
   return (
     <View style={styles.flex}>
-      {/* 🟦 סרגל עליון – כמו ב-Israel */}
+      {/* 🟦 סרגל עליון */}
       <LinearGradient
         colors={["#4f6cf7", "#d94645"]}
         start={{ x: 0, y: 0 }}
@@ -69,7 +69,7 @@ export default function AdminHomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* כפתורי-על */}
+        {/* כפתורי־על */}
         {MAIN_MENU.map(({ key, to, icon }) => (
           <CardButton key={key} label={t(key)} icon={icon} to={to} />
         ))}

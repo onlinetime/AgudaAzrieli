@@ -26,7 +26,8 @@ export default function UserLayout() {
           headerTitle: "",            // רק החץ
           headerTitleAlign: "center",
           contentStyle: { backgroundColor: undefined },
-          headerBackTitleVisible: false,
+          //headerBackTitleVisible: false,
+          headerShown: false,
         }}
       />
     </ThemeProvider>

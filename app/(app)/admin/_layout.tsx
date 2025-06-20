@@ -25,8 +25,8 @@ export default function AdminLayout() {
       <Stack
         key={language}
         screenOptions={{
-          headerShown: true,
-          headerBackTitleVisible: false,
+          headerShown: false,
+          //headerBackTitleVisible: false,
           headerTitleAlign: "center",
           contentStyle: { backgroundColor: undefined },
         }}

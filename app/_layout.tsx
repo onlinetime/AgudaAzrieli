@@ -9,6 +9,8 @@ import {
   DefaultTheme as NavLight,
 } from "@react-navigation/native";
 
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
 import { SettingsProvider, useSettings } from "../contexts/SettingsContext";
 import { lightTheme, darkTheme } from "../libs/theme";
 
@@ -20,10 +22,12 @@ function InnerLayout() {
     : { ...NavLight, colors: { ...NavLight.colors, ...lightTheme.colors } };
 
   return (
-    <ThemeProvider value={theme}>
-      {/* key על השפה — כשמשתנה השפה ה-Stack כולו מתאפס ומתרנדר מחדש */}
-      <Stack key={language} />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <Stack 
+        key={language}
+        screenOptions={{ headerShown: false }}
+      />
+    </SafeAreaProvider>
   );
 }
 
