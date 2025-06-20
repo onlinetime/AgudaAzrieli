@@ -1,14 +1,29 @@
-// app/(app)/admin/admin-settings.tsx
+// app/(app)/settings.tsx
 import React from "react";
-import { View, Text, Switch, StyleSheet, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  Switch,
+  StyleSheet,
+  ActivityIndicator,
+  Platform,
+  StatusBar,
+} from "react-native";
 import { useTheme } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
-import { useSettings } from "../../../contexts/SettingsContext";   // ← נתיב מוחלט מה-app/
+import { useSettings } from "../../contexts/SettingsContext"; //     ← נתיב מקוצר
 
-export default function AdminSettingsScreen() {
+export default function SettingsScreen() {
   const { t } = useTranslation();
   const { colors } = useTheme();
-  const { language, darkMode, toggleLanguage, setDarkMode, loading } = useSettings();
+
+  const {
+    loading,
+    language,          // "he" | "en"
+    darkMode,          // boolean
+    toggleLanguage,    // () => void
+    setDarkMode,       // (v:boolean)=>void
+  } = useSettings();
 
   if (loading) {
     return (
@@ -38,7 +53,11 @@ export default function AdminSettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24 },
+  container: {
+    flex: 1,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    padding: 24,
+  },
   title: { fontSize: 24, fontWeight: "700", marginBottom: 32 },
   row: {
     flexDirection: "row",

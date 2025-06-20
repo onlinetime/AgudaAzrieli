@@ -3,7 +3,6 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import * as Localization from "expo-localization";
 
-/* ───────────── Resources ───────────── */
 const resources = {
   he: {
     translation: {
@@ -13,7 +12,6 @@ const resources = {
       hebrew: "עברית",
       english: "English",
       darkMode: "מצב חשוך",
-      
 
       /* ── Home (user) ── */
       welcomeTitle: "ברוכים הבאים לאגודת הסטודנטים",
@@ -23,13 +21,12 @@ const resources = {
       forums: "פורומים",
       storesList: "רשימת חנויות",
       sendFeedback: "שליחת פידבק",
-      collectGift: "איסוף מתנה", 
+      collectGift: "איסוף מתנה",
 
       /* ── Home (admin) ── */
       welcomeAdmin: "ברוך הבא אדמין יקר",
       feedback: "צפייה בפידבקים",
-      forumPost: "אישור פורום",
-
+      forumApprove: "אישור פורום",      // ⬅︎ שינוי שם
       addCard: "הוסף כרטיס סטודנט",
       eventManagement: "ניהול אירועים",
       storeManagement: "ניהול חנויות",
@@ -83,11 +80,12 @@ const resources = {
       forums: "Forums",
       storesList: "Stores List",
       sendFeedback: "Send Feedback",
+      collectGift: "Gift Collection",
 
       /* ── Home (admin) ── */
       welcomeAdmin: "Welcome, Admin!",
       feedback: "View Feedback",
-      forumPost: "Forum Post",
+      forumApprove: "Forum Approval",    // ⬅︎ שינוי שם
       addCard: "Add Student Card",
       eventManagement: "Event Management",
       storeManagement: "Store Management",
@@ -124,17 +122,15 @@ const resources = {
     },
   },
 };
-/* ───────────────────────────────────── */
 
 i18n.use(initReactI18next).init({
   resources,
-  lng: "he", // default
+  lng: "he",
   fallbackLng: "he",
   interpolation: { escapeValue: false },
 });
 
-/* detect device language */
-const deviceLang = Localization.locale.split("-")[0]; // he / en …
+const deviceLang = Localization.locale.split("-")[0];
 if (["he", "en"].includes(deviceLang)) i18n.changeLanguage(deviceLang);
 
 export default i18n;

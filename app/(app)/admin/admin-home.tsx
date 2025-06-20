@@ -27,14 +27,14 @@ const MAIN_MENU = [
   // ----- מערכת “ישנה”
   { key: "feedback", to: "/admin/feedback-list", icon: "chatbubble-outline" },
 
-  { key: "forumPost",         to: "./admin-forum",         icon: "help-circle-outline" },
+  { key: "forumApprove",      to: "./admin-forum",         icon: "help-circle-outline" },
   { key: "addCard", to: "/student-card", icon: "cube-outline" },
 
   
   
 
   // ----- הגדרות
-  { key: "settings",          to: "./admin-settings",      icon: "settings-outline" },
+  { key: "settings",          to: "/settings",             icon: "settings-outline" },
 ] as const;
 
 /** כפתורי-משנה למסכי אירועים / חנויות (היו אצל Israel) */
