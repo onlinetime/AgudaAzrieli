@@ -130,7 +130,7 @@ i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-const deviceLang = Localization.locale.split("-")[0];
-if (["he", "en"].includes(deviceLang)) i18n.changeLanguage(deviceLang);
+const deviceLang = Localization.getLocales()[0]?.languageCode?.split("-")[0];
+if (deviceLang && ["he", "en"].includes(deviceLang)) i18n.changeLanguage(deviceLang);
 
 export default i18n;

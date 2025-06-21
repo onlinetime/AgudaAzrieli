@@ -1,37 +1,42 @@
-// app/(app)/user/events.tsx
-
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import {
   View,
   Text,
   FlatList,
-  RefreshControl,
-  StyleSheet,
-  ImageBackground,
+  Image,
   Pressable,
-  Alert,
-  Platform,
+  StyleSheet,
   ActivityIndicator,
+  Animated,
+  Platform,
+  Alert,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@react-navigation/native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { collection, onSnapshot } from "firebase/firestore";
-import * as Calendar from "expo-calendar";
 import { db } from "../../../firebase";
+import * as Calendar from "expo-calendar";
 import { useTranslation } from "react-i18next";
+import { router } from "expo-router";
 import { tr } from "../../utils/translate";
+import { useSettings } from "../../../contexts/SettingsContext";
+
+const ACCENT   = "#ff1744"; // stays the same for both modes
+const BG_LIGHT = "#fff";
+
+/* ───────────────────────────────────────────────────────────────────── */
 
 type RawEvent = {
   id: string;
   title: string;
   address?: string;
   description?: string;
-  startDate: string; // "DD/MM"
-  endDate: string;   // "DD/MM"
+  startDate: string;
+  endDate: string;
   picture?: string;
 };
+
 type Event = RawEvent & { start: Date; end: Date };
 
 const parseDate = (str: string): Date => {
@@ -40,41 +45,33 @@ const parseDate = (str: string): Date => {
   return new Date(now.getFullYear(), m - 1, d);
 };
 
+/* ───────────────────────────────────────────────────────────────────── */
+
 export default function EventsScreen() {
-  const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
-  const { t, i18n } = useTranslation();
-  const lang = i18n.language;
+  const insets                 = useSafeAreaInsets();
+  const { t, i18n }            = useTranslation();
+  const lang                   = i18n.language;
+  const { darkMode }           = useSettings();
+  const fadeAnim               = useRef(new Animated.Value(0)).current;
+
+  // dynamic palette according to mode
+  const SURFACE_BG       = darkMode ? "#121212" : BG_LIGHT;
+  const TEXT_PRIMARY     = darkMode ? "#E0E0E0" : "#121212";
+  const TEXT_SECONDARY   = darkMode ? "#C0C0C0" : "#555";
 
   const [rawEvents, setRawEvents] = useState<RawEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const fetchEvents = useCallback(() => {
-    setRefreshing(true);
-    const unsub = onSnapshot(
-      collection(db, "events"),
-      (snap) => {
-        setRawEvents(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
-        setLoading(false);
-        setRefreshing(false);
-      },
-      (err) => {
-        console.error(err);
-        setLoading(false);
-        setRefreshing(false);
-        Alert.alert(tr("שגיאה", lang), tr("לא ניתן לטעון אירועים", lang));
-      }
-    );
-    return unsub;
-  }, [lang]);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    const unsub = fetchEvents();
+    const unsub = onSnapshot(collection(db, "events"), (snap) => {
+      setRawEvents(snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as any) })));
+      setLoading(false);
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    });
     return () => unsub();
-  }, [fetchEvents]);
+  }, []);
 
-  const events = useMemo(() => {
+  const events = useMemo<Event[]>(() => {
     const now = new Date();
     return rawEvents
       .map((e) => ({ ...e, start: parseDate(e.startDate), end: parseDate(e.endDate) }))
@@ -86,10 +83,11 @@ export default function EventsScreen() {
     try {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
       if (status !== "granted") {
-        return Alert.alert(tr("אין הרשאה", lang), tr("לא ניתן להוסיף ליומן ללא הרשאה", lang));
+        Alert.alert(tr("noPermission", lang), tr("needCalendarPermission", lang));
+        return;
       }
       const cals = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-      const cal = cals.find((c) => c.allowsModifications) ?? cals[0];
+      const cal  = cals.find((c) => c.allowsModifications) ?? cals[0];
       await Calendar.createEventAsync(cal.id, {
         title: tr(ev.title, lang),
         startDate: ev.start,
@@ -98,199 +96,102 @@ export default function EventsScreen() {
         notes: tr(ev.description ?? "", lang),
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
-      Alert.alert(tr("הושלם", lang), tr("האירוע נוסף ליומן בהצלחה!", lang));
+      Alert.alert(tr("completed", lang), tr("eventAdded", lang));
     } catch {
-      Alert.alert(tr("שגיאה", lang), tr("לא ניתן להוסיף את האירוע ליומן", lang));
+      Alert.alert(tr("error", lang), tr("cannotAddEvent", lang));
     }
   };
 
-  const renderItem = ({ item }: { item: Event }) => {
-    const dateLabel = item.start.toLocaleDateString(
-      lang === "he" ? "he-IL" : "en-US",
-      { day: "numeric", month: "short" }
-    );
-
-    return (
-      <View style={styles.card}>
-        {item.picture ? (
-          <ImageBackground
-            source={{ uri: item.picture }}
-            style={styles.image}
-            imageStyle={{ opacity: 0.8 }}
-          >
-            <LinearGradient
-              colors={["transparent", "#000A"]}
-              style={styles.imageOverlay}
-            />
-            <View style={styles.dateBadge}>
-              <Text style={styles.dateText}>{dateLabel}</Text>
-            </View>
-          </ImageBackground>
-        ) : null}
-
-        <View
-          style={[
-            styles.info,
-            !item.picture && { borderTopLeftRadius: 12, borderTopRightRadius: 12 },
-            { backgroundColor: colors.card },
-          ]}
-        >
-          <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-            {tr(item.title, lang)}
-          </Text>
-          {item.address ? (
-            <View style={styles.metaRow}>
-              <Ionicons name="location-sharp" size={14} color={colors.text} />
-              <Text style={[styles.metaText, { color: colors.text }]}>
-                {tr(item.address, lang)}
-              </Text>
-            </View>
-          ) : null}
-          {item.description ? (
-            <Text style={[styles.metaText, { color: colors.text }]} numberOfLines={2}>
-              {tr(item.description, lang)}
-            </Text>
-          ) : null}
-          <Pressable
-            style={[styles.button, { borderColor: colors.primary }]}
-            android_ripple={{ color: colors.primary + "22" }}
-            onPress={() => addToCalendar(item)}
-          >
-            <Ionicons name="calendar-outline" size={18} color={colors.primary} />
-            <Text style={[styles.buttonText, { color: colors.primary }]}>
-              {t("addToCalendar")}
-            </Text>
-          </Pressable>
-        </View>
-      </View>
-    );
-  };
-
+  /* ───────────────────────────────────── loading */
   if (loading) {
     return (
-      <View
-        style={[
-          styles.loader,
-          { backgroundColor: colors.background, paddingTop: insets.top },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <SafeAreaView edges={["top"]} style={[styles.loadingContainer, { backgroundColor: SURFACE_BG }]}>        
+        <ActivityIndicator size="large" color={ACCENT} />
+      </SafeAreaView>
     );
   }
 
+  /* ───────────────────────────────────── UI */
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background, paddingTop: insets.top },
-      ]}
-    >
-      {/* Killer Header */}
+    <SafeAreaView edges={["top"]} style={[styles.flex, { backgroundColor: SURFACE_BG }]}>      
+      {/* HEADER */}
       <LinearGradient
-        colors={[colors.primary, "#b71c1c"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.header, { paddingTop: insets.top + 12 }]}
+        colors={[ACCENT, "#d32f2f"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <Ionicons name="calendar-outline" size={28} color="#fff" />
+        <Pressable onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
         <Text style={styles.headerTitle}>{t("upcomingEvents")}</Text>
+        <View style={{ width: 28 }} />
       </LinearGradient>
 
-      <FlatList
-        data={events}
-        keyExtractor={(e) => e.id}
-        renderItem={renderItem}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={fetchEvents}
-            tintColor={colors.primary}
-          />
-        }
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <Text style={[styles.empty, { color: colors.text }]}>
-            {t("noUpcomingEvents")}
-          </Text>
-        }
-      />
-    </View>
+      {/* LIST */}
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+        <FlatList
+          data={events}
+          keyExtractor={(e) => e.id}
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={<Text style={[styles.emptyText, { color: ACCENT }]}>{t("noUpcomingEvents")}</Text>}
+          renderItem={({ item }) => (
+            <View style={[styles.card, { backgroundColor: SURFACE_BG, borderColor: ACCENT }]}>              
+              {item.picture && <Image source={{ uri: item.picture }} style={styles.image} />}
+              <View style={styles.cardContent}>
+                <Text style={[styles.cardTitle, { color: TEXT_PRIMARY }]}>{tr(item.title, lang)}</Text>
+                <Text style={[styles.cardDate, { color: TEXT_SECONDARY }]}>
+                  {item.start.toLocaleDateString()} {item.address ? `— ${tr(item.address, lang)}` : ""}
+                </Text>
+                {!!item.description && (
+                  <Text style={[styles.cardDesc, { color: TEXT_SECONDARY }]}>{tr(item.description, lang)}</Text>
+                )}
+                <Pressable style={styles.cardButton} onPress={() => addToCalendar(item)}>
+                  <Ionicons name="add" size={16} color="#fff" />
+                  <Text style={styles.cardButtonText}>{t("addToCalendar")}</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+        />
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
+/* ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  loader: { flex: 1, justifyContent: "center", alignItems: "center" },
+  flex: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center" },
 
   header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 12, paddingBottom: 12,
   },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "800",
-    marginLeft: 8,
-  },
+  backBtn: { padding: 4 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
 
-  list: { padding: 16, paddingBottom: 32 },
-
-  empty: {
-    textAlign: "center",
-    marginTop: 40,
-    fontSize: 16,
-    fontStyle: "italic",
-  },
+  list: { padding: 16 },
 
   card: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
+    marginBottom: 20, borderRadius: 16, borderWidth: 2, overflow: "hidden",
+    ...Platform.select({
+      ios: { shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.6, shadowRadius: 12 },
+      android: { elevation: 6 },
+    }),
   },
-  image: { height: 140, justifyContent: "flex-end" },
-  imageOverlay: { ...StyleSheet.absoluteFillObject },
-  dateBadge: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-    backgroundColor: "#FFF8",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  dateText: { fontSize: 14, fontWeight: "600", color: "#000" },
+  image: { width: "100%", height: 150 },
 
-  info: { padding: 12 },
-  title: { fontSize: 18, fontWeight: "700", marginBottom: 6 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  metaText: { fontSize: 13, marginLeft: 4 },
+  cardContent: { padding: 16 },
+  cardTitle: { fontSize: 18, fontWeight: "600", marginBottom: 6 },
+  cardDate:  { fontSize: 14, marginBottom: 8 },
+  cardDesc:  { fontSize: 13, marginBottom: 12 },
 
-  button: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+  cardButton: {
+    flexDirection: "row", alignSelf: "flex-start", backgroundColor: ACCENT,
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 6, alignItems: "center",
   },
-  buttonText: { marginLeft: 6, fontSize: 14, fontWeight: "600" },
+  cardButtonText: { color: "#fff", marginLeft: 6, fontSize: 14, fontWeight: "500" },
+
+  emptyText: { textAlign: "center", marginTop: 40, fontSize: 16 },
 });

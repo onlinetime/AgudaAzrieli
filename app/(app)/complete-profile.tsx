@@ -194,7 +194,7 @@ export default function CompleteProfile() {
         />
       </View>
     </TouchableWithoutFeedback>
-  );
+);
 }
 
 const styles = StyleSheet.create({

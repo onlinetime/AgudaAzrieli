@@ -1,39 +1,30 @@
-// app/(app)/user/user-store.tsx
-
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   View,
   Text,
-  FlatList,
-  RefreshControl,
   StyleSheet,
-  ImageBackground,
-  Pressable,
+  FlatList,
   TextInput,
-  Alert,
-  Platform,
+  Pressable,
+  ImageBackground,
+  RefreshControl,
   ActivityIndicator,
+  Animated,
+  Platform,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useTranslation } from "react-i18next";
+import { router } from "expo-router";
+import { useSettings } from "../../../contexts/SettingsContext";
 
-// Manual translation dictionary
-const HE_EN: Record<string, string> = {
-  storesList: "Stores",
-  searchStore: "Search store…",
-  all: "All",
-  noStores: "No stores found",
-  Food: "Food",
-  Leisure: "Leisure",
-};
-
-const tr = (txt: string, lang: string) =>
-  lang === "en" ? HE_EN[txt] ?? txt : txt;
+// *––  PALETTE (unchanged for light mode) ––*
+const ACCENT   = "#ff1744";   //  red accent stays identical in both modes
+const BG_LIGHT = "#fff";       //  main surface light
+const BG_GREY  = "#EEE";       //  chips / search box light
 
 interface Store {
   id: string;
@@ -47,42 +38,54 @@ interface Store {
 }
 
 export default function UserStoreList() {
-  const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
-  const { i18n, t } = useTranslation();
-  const lang = i18n.language;
+  /* -------------------------------------------------- hooks */
+  const insets               = useSafeAreaInsets();
+  const { t, i18n }          = useTranslation();
+  const { darkMode }         = useSettings();
+  const fadeAnim             = useRef(new Animated.Value(0)).current;
 
-  const [stores, setStores] = useState<Store[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  /* -------------------------------------------------- colours */
+  // keep existing colours for light-mode; only swap surfaces when darkMode
+  const SURFACE_BG           = darkMode ? "#121212" : BG_LIGHT;
+  const GREY_BG              = darkMode ? "#2A2A2A" : BG_GREY;
+  const TEXT_PRIMARY         = darkMode ? "#E0E0E0" : "#121212";
+  const TEXT_SECONDARY       = darkMode ? "#C0C0C0" : "#555";
+  const CHIP_TEXT_DEFAULT    = darkMode ? "#E0E0E0" : "#333";
+  const PLACEHOLDER          = darkMode ? "#888" : "#888"; // identical
 
+  /* -------------------------------------------------- state */
+  const lang                 = i18n.language;
+  const [stores, setStores]  = useState<Store[]>([]);
+  const [loading, setLoading]            = useState(true);
+  const [refreshing, setRefreshing]      = useState(false);
+  const [search, setSearch]              = useState("");
+  const [category, setCategory]          = useState<string>("All");
+
+  /* -------------------------------------------------- data fetch */
   const fetchStores = useCallback(() => {
     setRefreshing(true);
     const unsub = onSnapshot(
       collection(db, "stores"),
       (snap) => {
-        const data = snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) }));
-        setStores(data);
+        setStores(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
         setLoading(false);
         setRefreshing(false);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
       },
-      (err) => {
-        console.error(err);
+      () => {
         setLoading(false);
         setRefreshing(false);
-        Alert.alert(t("Error"), t("Cannot load stores"));
       }
     );
     return unsub;
-  }, [t]);
+  }, [fadeAnim]);
 
   useEffect(() => {
     const unsub = fetchStores();
     return () => unsub();
   }, [fetchStores]);
 
+  /* -------------------------------------------------- derived */
   const categories = useMemo(() => {
     const cats = Array.from(new Set(stores.map((s) => s.category)));
     return ["All", ...cats];
@@ -90,85 +93,45 @@ export default function UserStoreList() {
 
   const filtered = useMemo(() => {
     return stores.filter((s) => {
-      const nameMatch = tr(s.name, lang).toLowerCase().includes(search.toLowerCase());
-      const catMatch = category === "All" || s.category === category;
+      const nameMatch = s.name.toLowerCase().includes(search.toLowerCase());
+      const catMatch  = category === "All" || s.category === category;
       return nameMatch && catMatch;
     });
-  }, [stores, search, category, lang]);
+  }, [stores, search, category]);
 
-  const renderStore = ({ item }: { item: Store }) => (
-    <View style={styles.card}>
-      {item.picture && (
-        <ImageBackground
-          source={{ uri: item.picture }}
-          style={styles.image}
-          imageStyle={{ opacity: 0.8 }}
-        >
-          <LinearGradient
-            colors={["transparent", "#000A"]}
-            style={styles.imageOverlay}
-          />
-        </ImageBackground>
-      )}
-      <View style={[styles.info, { backgroundColor: colors.card }]}>
-        <View style={styles.row}>
-          <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
-            {tr(item.name, lang)}
-          </Text>
-          <View style={[styles.badge, { backgroundColor: colors.primary + "22" }]}>
-            <Text style={[styles.badgeText, { color: colors.primary }]}>
-              -{item.discount}%
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.category, { color: colors.text }]}>
-          {tr(item.category, lang)}
-        </Text>
-        <Text style={[styles.description, { color: colors.text }]} numberOfLines={2}>
-          {tr(item.description, lang)}
-        </Text>
-        <View style={styles.row}>
-          <Ionicons name="location-sharp" size={14} color={colors.text} />
-          <Text style={[styles.meta, { color: colors.text }]}>
-            {item.address}
-          </Text>
-        </View>
-        <View style={styles.row}>
-          <Ionicons name="call-outline" size={14} color={colors.text} />
-          <Text style={[styles.meta, { color: colors.text }]}>
-            {item.phoneNumber}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
+  /* -------------------------------------------------- loading */
+  if (loading) {
+    return (
+      <SafeAreaView edges={["top"]} style={[styles.loadingContainer, { backgroundColor: SURFACE_BG }]}>        
+        <ActivityIndicator size="large" color={ACCENT} />
+      </SafeAreaView>
+    );
+  }
 
+  /* -------------------------------------------------- render */
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background, paddingTop: insets.top },
-      ]}
-    >
-      {/* Header */}
+    <SafeAreaView edges={["top"]} style={[styles.flex, { backgroundColor: SURFACE_BG }]}>      
+      {/* HEADER */}
       <LinearGradient
-        colors={[colors.primary, "#b71c1c"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.header, { paddingTop: insets.top + 12 }]}
+        colors={[ACCENT, "#d32f2f"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <Ionicons name="storefront-outline" size={28} color="#fff" />
+        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
         <Text style={styles.headerTitle}>{t("storesList")}</Text>
+        <View style={{ width: 24 }} />
       </LinearGradient>
 
-      {/* Search & Filter */}
+      {/* SEARCH & FILTER */}
       <View style={styles.controls}>
-        <View style={[styles.searchBox, { backgroundColor: colors.card }]}>
+        <View style={[styles.searchBox, { backgroundColor: GREY_BG }]}>          
           <Ionicons name="search-outline" size={20} color="#888" />
           <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
+            style={[styles.searchInput, { color: TEXT_PRIMARY }]}
             placeholder={t("searchStore")}
-            placeholderTextColor="#888"
+            placeholderTextColor={PLACEHOLDER}
             value={search}
             onChangeText={setSearch}
           />
@@ -179,149 +142,127 @@ export default function UserStoreList() {
           keyExtractor={(c) => c}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.filterList}
-          renderItem={({ item: c }) => (
-            <Pressable
-              onPress={() => setCategory(c)}
-              style={[
-                styles.filterChip,
-                category === c && {
-                  backgroundColor: colors.primary,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  category === c && { color: "#fff" },
-                ]}
+          renderItem={({ item }) => {
+            const isActive = category === item;
+            return (
+              <Pressable
+                onPress={() => setCategory(item)}
+                style={[styles.chip, { backgroundColor: isActive ? ACCENT : GREY_BG }]}
               >
-                {tr(c, lang)}
-              </Text>
-            </Pressable>
-          )}
+                <Text
+                  style={[styles.chipText, { color: isActive ? BG_LIGHT : CHIP_TEXT_DEFAULT }]} numberOfLines={1}
+                >
+                  {item}
+                </Text>
+              </Pressable>
+            );
+          }}
         />
       </View>
 
-      {/* Store List */}
-      {loading ? (
-        <ActivityIndicator
-          style={styles.loader}
-          size="large"
-          color={colors.primary}
-        />
-      ) : (
+      {/* LIST */}
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <FlatList
           data={filtered}
           keyExtractor={(s) => s.id}
-          renderItem={renderStore}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={fetchStores}
-              tintColor={colors.primary}
-            />
-          }
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchStores} tintColor={ACCENT} />}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.empty}>
+            <View style={styles.emptyContainer}>
               <Ionicons name="alert-circle-outline" size={48} color="#888" />
-              <Text style={[styles.emptyText, { color: colors.text }]}>
-                {t("noStores")}
-              </Text>
+              <Text style={[styles.emptyText, { color: TEXT_SECONDARY }]}>{t("noStores")}</Text>
             </View>
           }
+          renderItem={({ item }) => (
+            <View style={[styles.card, { backgroundColor: SURFACE_BG, borderColor: ACCENT }]}>              
+              {item.picture && (
+                <ImageBackground source={{ uri: item.picture }} style={styles.image} imageStyle={{ opacity: 0.7 }}>
+                  <LinearGradient colors={["transparent", "rgba(0,0,0,0.4)"]} style={styles.imageOverlay} />
+                </ImageBackground>
+              )}
+
+              <View style={styles.cardContent}>
+                <View style={styles.row}>
+                  <Text style={[styles.storeName, { color: TEXT_PRIMARY }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <View style={[styles.discountBadge, { backgroundColor: ACCENT + "22" }]}>
+                    <Text style={[styles.discountText, { color: ACCENT }]}>-{item.discount}%</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.categoryLabel, { color: TEXT_SECONDARY }]}>{item.category}</Text>
+                {!!item.description && (
+                  <Text style={[styles.description, { color: TEXT_SECONDARY }]} numberOfLines={2}>{item.description}</Text>
+                )}
+
+                <View style={styles.row}>
+                  <Ionicons name="location-sharp" size={14} color={TEXT_SECONDARY} />
+                  <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>{item.address}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Ionicons name="call-outline" size={14} color={TEXT_SECONDARY} />
+                  <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>{item.phoneNumber}</Text>
+                </View>
+              </View>
+            </View>
+          )}
         />
-      )}
-    </View>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
+/* ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 6,
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "800",
-    marginLeft: 8,
-  },
+  flex: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center" },
 
-  controls: {
-    padding: 16,
+  header: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 12, paddingBottom: 12,
   },
+  headerBtn: { padding: 4 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
+
+  controls: { paddingHorizontal: 16, paddingTop: 12 },
   searchBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderRadius: 24,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "android" ? 0 : 8,
+    flexDirection: "row", alignItems: "center", borderRadius: 24,
+    paddingHorizontal: 12, paddingVertical: Platform.OS === "android" ? 0 : 8,
     marginBottom: 12,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: 8,
-    height: 36,
-    fontSize: 16,
-  },
-  filterList: {
-    paddingVertical: 8,
-  },
-  filterChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#EEE",
-    marginRight: 8,
-  },
-  filterText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 16, height: 36 },
 
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 32,
+  filterList: { paddingVertical: 8 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginRight: 8,
+    minWidth: 60, alignItems: "center",
   },
-  loader: { flex: 1, justifyContent: "center", alignItems: "center" },
-  empty: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 60 },
+  chipText: { fontSize: 14, fontWeight: "500" },
+
+  list: { paddingHorizontal: 16, paddingBottom: 32 },
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 60 },
   emptyText: { fontSize: 16, marginTop: 8 },
 
   card: {
-    marginBottom: 16,
-    borderRadius: 12,
-    overflow: "hidden",
-    backgroundColor: "#fff",
-    elevation: 3,
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    borderColor: 'black',
-    borderWidth: 1,
+    marginBottom: 20, borderRadius: 16, borderWidth: 2, overflow: "hidden",
+    ...Platform.select({
+      ios: { shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12 },
+      android: { elevation: 6 },
+    }),
   },
-  image: { height: 140, justifyContent: "flex-end" },
+  image: { width: "100%", height: 150 },
   imageOverlay: { ...StyleSheet.absoluteFillObject },
 
-  info: { padding: 12 },
+  cardContent: { padding: 16 },
   row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  name: { flex: 1, fontSize: 18, fontWeight: "700" },
-  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  badgeText: { fontSize: 14, fontWeight: "600" },
+  storeName: { flex: 1, fontSize: 18, fontWeight: "700" },
 
-  category: { marginTop: 4, fontSize: 14, fontWeight: "500" },
-  description: { marginTop: 6, fontSize: 13, lineHeight: 18 },
-  meta: { fontSize: 13, marginLeft: 6, marginTop: 8 },
+  discountBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  discountText: { fontSize: 14, fontWeight: "600" },
+
+  categoryLabel: { marginTop: 6, fontSize: 14, fontWeight: "500" },
+  description: { marginTop: 6, fontSize: 13 },
+  meta: { fontSize: 13, marginLeft: 6 },
 });

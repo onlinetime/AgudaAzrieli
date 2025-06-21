@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,321 +6,146 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Platform,
-  Image,
   TextInput,
-  Modal,
+  RefreshControl,
+  Animated,
+  Platform,
 } from "react-native";
-import {
-  collection,
-  query,
-  orderBy,
-  onSnapshot,
-  Timestamp,
-} from "firebase/firestore";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import { collection, query, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import { router } from "expo-router";
-import DateTimePicker from "@react-native-community/datetimepicker";
-
-import { Picker } from "@react-native-picker/picker";
-
 import { db } from "../../../firebase";
+import { useSettings } from "../../../contexts/SettingsContext";
 
-/* ─────── קבועי קטגוריה ─────── */
-const CATEGORIES = [
-  "תוכנה",
-  "תעשייה וניהול",
-  "חומרים",
-  "בניין",
-  "פארמה",
-  "מדעי המחשב",
-  "חשמל ואלקטרוניקה",
-  "מכונות",
-  "אחר",
-] as const;
+const PRIMARY      = "#ff1744";
+const WHITE        = "#ffffff";
+const LIGHT_GREY   = "#EEE";
 
-/* ─────── טיפוס פורום ─────── */
-type Forum = {
-  id: string;
-  title: string;
-  category: (typeof CATEGORIES)[number];
-  createdAt?: Timestamp;
-  createdBy: { displayName: string };
-  isActive: boolean;
-  lastActivity?: Timestamp;
-  replies?: number;
-  likes?: number;
-};
+const CATEGORIES = ["תוכנה","תעשייה וניהול","חומרים","בניין","פארמה","מדעי המחשב","חשמל ואלקטרוניקה","מכונות","אחר"] as const;
+const STATUS_OPTIONS = [ { key: "all", label: "הכל" }, { key: "active", label: "פעיל" }, { key: "closed", label: "לא פעיל" } ] as const;
+
+type Forum = { id: string; title: string; category: (typeof CATEGORIES)[number]; createdAt?: Timestamp; createdBy: { displayName: string }; isActive: boolean; lastActivity?: Timestamp; likes?: number; };
 
 export default function ForumsHome() {
-  /* ----- state ----- */
-  const [forums, setForums] = useState<Forum[]>([]);
-  const [loading, setLoading] = useState(true);
+  const insets = useSafeAreaInsets();
+  const { darkMode } = useSettings();
 
-  /* פילטרים */
-  const [catFilter, setCatFilter] = useState<string | "">("");
-  const [onlyActive, setOnlyActive] = useState<"all" | "yes" | "no">("all");
-  const [dateFrom, setDateFrom]     = useState<Date | null>(null);
-  const [titleQuery, setTitleQuery] = useState("");
+  // dynamic palette
+  const SURFACE_BG     = darkMode ? "#121212" : WHITE;
+  const CARD_BG        = darkMode ? "#1f1f1f" : WHITE;
+  const GREY_BG        = darkMode ? "#2A2A2A" : LIGHT_GREY;
+  const TEXT_PRIMARY   = darkMode ? "#E0E0E0" : "#121212";
+  const TEXT_SECONDARY = darkMode ? "#C0C0C0" : "#555";
 
-  /* Drawer */
-  const [drawerOpen, setDrawer] = useState(false);
-  const toggleDrawer = () => setDrawer((p) => !p);
+  const [forums, setForums]         = useState<Forum[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch]         = useState("");
+  const [category, setCategory]     = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<"all"|"active"|"closed">("all");
 
-  /* ----- live feed ----- */
-  useEffect(() => {
-    const q = query(collection(db, "forums"), orderBy("createdAt", "desc"));
-    const unsub = onSnapshot(q, (snap) => {
-      setForums(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Forum) })));
-      setLoading(false);
-    });
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const fetchForums = () => {
+    setRefreshing(true);
+    const q = query(collection(db,"forums"), orderBy("createdAt","desc"));
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        setForums(snap.docs.map(d => ({ id: d.id, ...(d.data() as Forum) })));
+        setLoading(false);
+        setRefreshing(false);
+      },
+      () => {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    );
     return unsub;
-  }, []);
+  };
 
-  /* ----- filtering ----- */
-  const filtered = useMemo(() => {
-    return forums.filter((f) => {
-      if (catFilter && f.category !== catFilter) return false;
-      if (onlyActive === "yes" && !f.isActive) return false;
-      if (onlyActive === "no"  &&  f.isActive) return false;
-      if (dateFrom && (!f.createdAt || f.createdAt.toMillis() < dateFrom.getTime()))
-        return false;
-      if (titleQuery && !f.title.includes(titleQuery)) return false;
-      return true;
-    });
-  }, [forums, catFilter, onlyActive, dateFrom, titleQuery]);
+  useEffect(()=>{ const unsub = fetchForums(); return () => unsub(); }, []);
 
-  if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
+  useEffect(()=>{ if(!loading){ Animated.timing(fadeAnim,{ toValue:1, duration:400, useNativeDriver:true }).start(); } },[loading]);
 
-  /* ───────── UI ───────── */
+  const filtered = useMemo(()=> forums.filter(f=>{ if(category && f.category!==category) return false; if(search && !f.title.includes(search)) return false; if(statusFilter==="active" && !f.isActive) return false; if(statusFilter==="closed" && f.isActive) return false; return true; }), [forums, category, search, statusFilter]);
+
+  if(loading){ return (<SafeAreaView style={[styles.center,{ backgroundColor:SURFACE_BG, paddingTop:insets.top }]}><ActivityIndicator size="large" color={PRIMARY}/></SafeAreaView>);} 
+
   return (
-    <View style={styles.container}>
-      {/* ▌באנר – כפתור≡ + לוגו + כותרת ▌*/}
-      <View style={styles.banner}>
-        <Pressable onPress={toggleDrawer} style={styles.menuBtn}>
-          <Ionicons name="menu" size={28} color="#fff" />
-        </Pressable>
+    <SafeAreaView style={[styles.container,{ backgroundColor:SURFACE_BG }]} edges={["top","bottom"]}>
+      {/* Header */}
+      <LinearGradient colors={[PRIMARY,"#d32f2f"]} start={{x:0,y:0}} end={{x:1,y:0}} style={[styles.header,{ paddingTop:insets.top+6 }]}>        
+        <Pressable onPress={()=>router.back()} style={styles.headerBtn}><Ionicons name="arrow-back" size={24} color={WHITE}/></Pressable>
+        <Text style={styles.headerTitle}>פורומים</Text>
+        <Pressable onPress={()=>router.push("/forums/new")} style={styles.headerBtn}><Ionicons name="add-circle-outline" size={28} color={WHITE}/></Pressable>
+      </LinearGradient>
 
-        <Image
-          source={require("../../../assets/images/collegeLogo.png")}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-        <Text style={styles.bannerTitle}>רשימת הפורומים</Text>
-      </View>
-
-      {/* ▌כפתור “צור פורום” ▌*/}
-      <Pressable
-        style={styles.newBtn}
-        onPress={() => router.push("/forums/new")}
-      >
-        <Ionicons name="add" size={20} color="#fff" />
-        <Text style={styles.newTxt}>צור פורום</Text>
-      </Pressable>
-
-      {/* ▌טבלת כותרות ▌*/}
-      <View style={styles.header}>
-        <Text style={styles.col}>קטגוריה</Text>
-        <Text style={styles.col}>מפרסם</Text>
-        <Text style={styles.col}>עדכון</Text>
-        <Text style={styles.col}>פעיל?</Text>
-        <Text style={styles.col}>תאריך</Text>
-        <Text style={[styles.col, { flex: 2 }]}>פורום</Text>
-      </View>
-
-      {/* ▌רשימה ▌*/}
-      <FlatList
-        data={filtered}
-        keyExtractor={(f) => f.id}
-        renderItem={({ item }) => <Row forum={item} />}
-      />
-
-      {/* ▌Drawer / Side-filter ▌*/}
-      <Modal
-        visible={drawerOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={toggleDrawer}
-      >
-        <Pressable style={styles.overlay} onPress={toggleDrawer} />
-        <View style={styles.drawer}>
-          <Text style={styles.drawerTitle}>סינון פורומים</Text>
-
-          {/* חיפוש בכותרת */}
-          <TextInput
-            placeholder="חפש בכותרת"
-            style={[styles.input, { direction: "ltr" }]}
-            value={titleQuery}
-            onChange={(e) => setTitleQuery(e.nativeEvent.text)}
-          />
-
-          {/* קטגוריה */}
-          <Picker
-            selectedValue={catFilter}
-            onValueChange={setCatFilter}
-            style={styles.input}
-          >
-            <Picker.Item label="כל הקטגוריות" value="" />
-            {CATEGORIES.map((c) => (
-              <Picker.Item key={c} label={c} value={c} />
-            ))}
-          </Picker>
-
-          {/* פעיל? */}
-          <Picker
-            selectedValue={onlyActive}
-            onValueChange={setOnlyActive}
-            style={styles.input}
-          >
-            <Picker.Item label="הכל" value="all" />
-            <Picker.Item label="פעיל" value="yes" />
-            <Picker.Item label="לא פעיל" value="no" />
-          </Picker>
-
-          {/* מתאריך */}
-          <Pressable
-            style={styles.dateBtn}
-            onPress={() => setDateFrom(new Date())}
-          >
-            <Text>
-              {dateFrom ? dateFrom.toLocaleDateString("he-IL") : "מתאריך"}
-            </Text>
-          </Pressable>
-          {Platform.OS !== "web" && dateFrom && (
-            <DateTimePicker
-              mode="date"
-              value={dateFrom}
-              onChange={(_, d) => d && setDateFrom(d)}
-            />
-          )}
+      {/* Controls */}
+      <View style={styles.controls}>
+        <View style={[styles.searchBox,{ backgroundColor: GREY_BG }]}>          
+          <Ionicons name="search-outline" size={20} color="#888" />
+          <TextInput style={[styles.searchInput,{ color: TEXT_PRIMARY }]} placeholder="חפש כותרת..." placeholderTextColor="#888" value={search} onChangeText={setSearch}/>
         </View>
-      </Modal>
-    </View>
+        {/* Category */}
+        <FlatList horizontal data={["",...CATEGORIES]} keyExtractor={c=>c||"_all"} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList} renderItem={({item:c})=>{ const active = category===c; return (<Pressable onPress={()=>setCategory(c)} style={[styles.filterChip,{ backgroundColor: active?PRIMARY:GREY_BG }]}><Text style={[styles.filterText,{ color: active?WHITE:TEXT_PRIMARY }]} numberOfLines={1}>{c===""?"הכל":c}</Text></Pressable>); }}/>
+        {/* Status */}
+        <FlatList horizontal data={STATUS_OPTIONS} keyExtractor={s=>s.key} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList} renderItem={({item})=>{ const active = statusFilter===item.key; return (<Pressable onPress={()=>setStatusFilter(item.key)} style={[styles.filterChip,{ backgroundColor: active?PRIMARY:GREY_BG }]}><Text style={[styles.filterText,{ color: active?WHITE:TEXT_PRIMARY }]}>{item.label}</Text></Pressable>); }}/>
+      </View>
+
+      {/* List */}
+      <Animated.View style={{ flex:1, opacity: fadeAnim }}>
+        <FlatList data={filtered} keyExtractor={f=>f.id} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchForums} tintColor={PRIMARY}/>} renderItem={({item})=><ForumRow forum={item} cardBg={CARD_BG} textPrimary={TEXT_PRIMARY} textSecondary={TEXT_SECONDARY}/>} contentContainerStyle={styles.list} showsVerticalScrollIndicator={false} ListEmptyComponent={<View style={styles.empty}><Text style={[styles.emptyText,{ color: TEXT_SECONDARY }]}>אין פורומים תואמים</Text></View>}/>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
-/* ─────── Row ─────── */
-function Row({ forum }: { forum: Forum }) {
-  const created = forum.createdAt
-    ? new Date(forum.createdAt.toMillis()).toLocaleString("he-IL")
-    : "-";
-  const updated = forum.lastActivity
-    ? new Date(forum.lastActivity.toMillis()).toLocaleString("he-IL")
-    : "-";
-
+function ForumRow({ forum, cardBg, textPrimary, textSecondary }:{ forum: Forum; cardBg:string; textPrimary:string; textSecondary:string; }){
+  const updated = forum.lastActivity? new Date(forum.lastActivity.toMillis()).toLocaleDateString("he-IL") : "-";
+  const [commentsCount,setComments]=useState(0);
+  useEffect(()=>{ const unsub=onSnapshot(collection(db,"forums",forum.id,"comments"),snap=>setComments(snap.size)); return unsub; },[forum.id]);
   return (
-    <Pressable
-      style={styles.row}
-      onPress={() =>
-        router.push({ pathname: "/forums/[id]", params: { id: forum.id } })
-      }
-    >
-      <Text style={styles.cell}>{forum.category}</Text>
-      <Text style={styles.cell}>{forum.createdBy?.displayName ?? "-"}</Text>
-      <Text style={styles.cell}>{updated}</Text>
-
-      <Ionicons
-        name={forum.isActive ? "checkmark-circle" : "close-circle"}
-        size={20}
-        color={forum.isActive ? "green" : "red"}
-        style={styles.cellIcon}
-      />
-
-      <Text style={styles.cell}>{created}</Text>
-      <Text style={[styles.cell, { flex: 2 }]} numberOfLines={1}>
-        {forum.title}
-      </Text>
+    <Pressable style={[styles.card,{ backgroundColor: cardBg }]} onPress={()=>router.push({ pathname:"/forums/[id]", params:{ id:forum.id }})} android_ripple={{ color: LIGHT_GREY }}>
+      <Text style={[styles.cardTitle,{ color: textPrimary }]} numberOfLines={2}>{forum.title}</Text>
+      <View style={styles.metaRow}>
+        <View style={styles.metaGroup}><Ionicons name="person-circle-outline" size={16} color={textSecondary} /><Text style={[styles.metaText,{ color: textSecondary }]}>{forum.createdBy.displayName}</Text></View>
+        <View style={styles.metaGroup}><Ionicons name="chatbubble-outline" size={16} color={PRIMARY} /><Text style={[styles.metaText,{ color: textSecondary }]}>{commentsCount}</Text></View>
+        <View style={styles.metaGroup}><Ionicons name="heart-outline" size={16} color={PRIMARY} /><Text style={[styles.metaText,{ color: textSecondary }]}>{forum.likes||0}</Text></View>
+        <View style={[styles.badge, forum.isActive?styles.activeBadge:styles.inactiveBadge]}><Text style={styles.badgeText}>{forum.isActive?"פעיל":"לא פעיל"}</Text></View>
+      </View>
+      <View style={styles.bottomRow}><Text style={[styles.bottomText,{ color: textSecondary }]}>{forum.category}</Text><Text style={[styles.bottomText,{ color: textSecondary }]}>{updated}</Text></View>
     </Pressable>
   );
 }
 
-/* ─────── styles ─────── */
+/* ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 12 },
-
-  /* באנר */
-  banner: {
-    flexDirection: "row-reverse",
-    alignItems: "center",
-    marginBottom: 12,
-    gap: 8,
-    justifyContent: "flex-start",
-  },
-  menuBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#4f6cf7",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  logo: { width: 110, height: 36 },
-  bannerTitle: { fontSize: 22, fontWeight: "700", color: "#333" },
-
-  /* כפתור חדש */
-  newBtn: {
-    flexDirection: "row",
-    alignSelf: "flex-end",
-    backgroundColor: "#4f6cf7",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
-  },
-  newTxt: { color: "#fff", marginLeft: 4 },
-
-  /* טבלת כותרות */
-  header: {
-    flexDirection: "row",
-    backgroundColor: "#2e6dd8",
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  col: { flex: 1, color: "#fff", textAlign: "center", fontWeight: "600" },
-
-  /* שורה בטבלה */
-  row: {
-    flexDirection: "row",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderColor: "#ececec",
-    alignItems: "center",
-  },
-  cell: { flex: 1, textAlign: "center" },
-  cellIcon: { flex: 1, textAlign: "center" },
-
-  /* Drawer */
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.3)",
-  },
-  drawer: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 290,
-    backgroundColor: "#fff",
-    padding: 18,
-    borderTopLeftRadius: 16,
-    borderBottomLeftRadius: 16,
-    elevation: 6,
-  },
-  drawerTitle: { fontSize: 18, fontWeight: "700", marginBottom: 12 },
-
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 8,
-  },
-  dateBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    marginTop: 8,
-  },
+  container:{ flex:1 },
+  center:{ flex:1, justifyContent:"center", alignItems:"center" },
+  header:{ flexDirection:"row", alignItems:"center", justifyContent:"space-between", paddingVertical:14, paddingHorizontal:12 },
+  headerTitle:{ color:WHITE, fontSize:20, fontWeight:"700" },
+  headerBtn:{ padding:4 },
+  controls:{ paddingHorizontal:12, paddingTop:12 },
+  searchBox:{ flexDirection:"row", borderRadius:24, paddingHorizontal:12, paddingVertical: Platform.OS==="android"?0:8, alignItems:"center" },
+  searchInput:{ flex:1, marginLeft:8, height:40, fontSize:16 },
+  filterList:{ paddingVertical:8 },
+  filterChip:{ paddingHorizontal:16, paddingVertical:8, borderRadius:20, marginRight:8, minWidth:80, alignItems:"center" },
+  filterText:{ fontSize:14, fontWeight:"500" },
+  list:{ paddingHorizontal:12, paddingBottom:24 },
+  empty:{ flex:1, justifyContent:"center", alignItems:"center", marginTop:40 },
+  emptyText:{ fontSize:16 },
+  card:{ borderRadius:12, padding:16, marginBottom:12, shadowColor:"#000", shadowOffset:{ width:0, height:2 }, shadowOpacity:0.1, shadowRadius:4, elevation:2 },
+  cardTitle:{ fontSize:18, fontWeight:"600", marginBottom:8 },
+  metaRow:{ flexDirection:"row", alignItems:"center", flexWrap:"wrap", marginBottom:8 },
+  metaGroup:{ flexDirection:"row", alignItems:"center", marginRight:16 },
+  metaText:{ marginLeft:4, fontSize:14 },
+  badge:{ paddingHorizontal:6, paddingVertical:2, borderRadius:8, marginLeft:"auto" },
+  activeBadge:{ backgroundColor:"#c8e6c9" },
+  inactiveBadge:{ backgroundColor:"#ffcdd2" },
+  badgeText:{ fontSize:12, fontWeight:"500", color:"#121212" },
+  bottomRow:{ flexDirection:"row", justifyContent:"space-between" },
+  bottomText:{ fontSize:13 },
 });
