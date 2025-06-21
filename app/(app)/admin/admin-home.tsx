@@ -34,7 +34,7 @@ const MAIN_MENU = [
   { key: "waveSettings",    to: "./waveSettings",     icon: "color-palette-outline" },
 
   // ----- הגדרות
-  { key: "settings",        to: "./admin-settings",    icon: "settings-outline" },
+  { key: "settings",        to: "/settings",    icon: "settings-outline" },
 ] as const;
 
 /** כפתורי־משנה למסכי אירועים / חנויות **/

@@ -172,7 +172,7 @@ export default function UserHome() {
     { label: t("collectGift", "איסוף מתנה"), to: "./ClaimGift", icon: "gift-outline" },
     { label: t("storesList"), to: "./user-store", icon: "storefront-outline" },
     { label: t("sendFeedback"), to: "./user-feedback", icon: "pencil-outline" },
-    { label: t("settings"), to: "./user-settings", icon: "settings-outline" },
+    { label: t("settings"), to: "/settings", icon: "settings-outline" },
   ];
 
   useEffect(() => {
