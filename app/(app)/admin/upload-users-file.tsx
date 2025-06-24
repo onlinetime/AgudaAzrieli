@@ -10,15 +10,24 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import * as FileSystem from "expo-file-system";
 import Papa from "papaparse";
-import { collection, addDoc, query, where, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "../../../firebase";
 import XLSX from "xlsx";
 import { useTheme } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";         // ← חדש
 
 export default function UploadUsersFile() {
   const { colors } = useTheme();
+  const { t } = useTranslation();                      // ← חדש
   const [loading, setLoading] = useState(false);
 
+  /* ───────────  Pick file  ─────────── */
   const handlePickFile = async () => {
     setLoading(true);
     try {
@@ -37,6 +46,7 @@ export default function UploadUsersFile() {
       const { uri, name } = result;
       let users: any[] = [];
 
+      /* ─── CSV ─── */
       if (name.endsWith(".csv")) {
         const csvText = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.UTF8,
@@ -49,10 +59,12 @@ export default function UploadUsersFile() {
           },
           error: () => {
             setLoading(false);
-            Alert.alert("שגיאה", "נכשל בקריאת הקובץ");
+            Alert.alert(t("error"), t("somethingWentWrong"));
           },
         });
-      } else {
+      }
+      /* ─── Excel ─── */
+      else {
         const b64 = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
@@ -64,14 +76,16 @@ export default function UploadUsersFile() {
     } catch (e) {
       setLoading(false);
       console.error(e);
-      Alert.alert("Error", "Failed to upload users.");
+      Alert.alert(t("error"), t("somethingWentWrong"));
     }
   };
 
+  /* ───────────  Upload to Firestore  ─────────── */
   const uploadUsers = async (users: any[]) => {
     let added = 0;
     for (const u of users) {
       if (!u["שם פרטי"] || !u["שם משפחה"] || !u["תעודת זהות"]) continue;
+
       const q = query(
         collection(db, "users"),
         where("id", "==", String(u["תעודת זהות"]))
@@ -80,32 +94,36 @@ export default function UploadUsersFile() {
       if (snap.empty) {
         await addDoc(collection(db, "users"), {
           firstName: u["שם פרטי"],
-          lastName: u["שם משפחה"],
-          id: String(u["תעודת זהות"]),
+          lastName:  u["שם משפחה"],
+          id:        String(u["תעודת זהות"]),
         });
         added++;
       }
     }
     setLoading(false);
-    Alert.alert("העלאה הושלמה", `הועלו ${added} משתמשים חדשים`);
+    Alert.alert(
+      t("completed"),
+      `${t("uploadUsers")}: ${added}`
+    );
   };
 
+  /* ───────────  UI  ─────────── */
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <Button
-        title="Upload Users Excel"
+        title={t("uploadUsersExcel")}              // ← תרגום
         onPress={handlePickFile}
         color={colors.primary}
       />
-      {loading && <ActivityIndicator style={{ marginTop: 12 }} color={colors.primary} />}
+      {loading && (
+        <ActivityIndicator style={{ marginTop: 12 }} color={colors.primary} />
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  container: { flex: 1, justifyContent: "center", alignItems: "center" },
 });

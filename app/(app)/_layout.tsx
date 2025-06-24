@@ -23,6 +23,7 @@ export default function UserLayout() {
       <Stack
         key={language}
         screenOptions={{
+          headerShown: false , // להציג את ה-header
           headerTitle: "",            // רק החץ
           headerTitleAlign: "center",
           contentStyle: { backgroundColor: undefined },

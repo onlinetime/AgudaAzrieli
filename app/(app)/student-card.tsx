@@ -1,5 +1,4 @@
-/* app/(app)/student-card.tsx */
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -8,213 +7,257 @@ import {
   ActivityIndicator,
   Pressable,
   Alert,
-  Platform,
-  StatusBar,
   Dimensions,
+  ScrollView,
+  Animated,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Path } from "react-native-svg";
+import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { onAuthStateChanged } from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  updateDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import {
   getStorage,
   ref as storageRef,
   uploadBytes,
   getDownloadURL,
 } from "firebase/storage";
-import * as ImagePicker from "expo-image-picker";
+import { getFirebaseAuth, db } from "../../firebase";
+import { useSettings } from "../../contexts/SettingsContext";
+import { useTranslation } from "react-i18next";
 
-import { getFirebaseAuth, db } from "../../firebase";      // ← התאמת-נתיב
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const logo = require("../../assets/images/collegeLogo.png");
+
+const AVATAR_SIZE = 160;
+const NEON = "#ff1744";
+const WHITE = "#ffffff";
 
 type StudentData = {
   firstName: string;
-  lastName:  string;
-  ID:        string;
+  lastName: string;
+  id: string;
   ProfilePicture: string;
 };
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
-
 export default function StudentCardScreen() {
-  const [data,    setData]    = useState<StudentData | null>(null);
+  /* hooks -–––––––––––––––––––––––––––––– */
+  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const { darkMode } = useSettings();
+
+  /* צבעים בהתאם למצב-לילה */
+  const SURFACE_BG = darkMode ? "#121212" : WHITE;
+  const TEXT_PRIMARY = darkMode ? "#E0E0E0" : "#121212";
+  const TEXT_SECOND = darkMode ? "#C0C0C0" : "#333";
+  const UPLOAD_BG = darkMode ? "#1f1f1f" : "#fff";
+
+  /* state */
+  const [data, setData] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [now,     setNow]     = useState(new Date());
 
   const auth = useMemo(getFirebaseAuth, []);
 
-  /* שעון */
+  /* אנימציית כניסה */
+  const anim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(t);
+    Animated.timing(anim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
   }, []);
 
-  /* משיכת נתונים */
+  /* שליפת נתוני סטודנט */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       if (user?.email) {
-        const snap = await getDoc(doc(db, "users", user.email));
-        if (snap.exists()) setData(snap.data() as StudentData);
+        try {
+          const snap = await getDoc(doc(db, "users", user.email));
+          if (snap.exists()) setData(snap.data() as StudentData);
+        } catch {
+          Alert.alert(t("error"), t("couldNotLoadStudent"));
+        }
       }
       setLoading(false);
     });
     return unsub;
-  }, [auth]);
+  }, [auth, t]);
 
-  /* העלאת-תמונה */
-  const handlePickImage = useCallback(async () => {
+  /* בחירת תמונה חדשה */
+  const pickImage = useCallback(async () => {
+    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!granted) return Alert.alert(t("noPermission"), t("needGalleryAccess"));
+
+    const res = await ImagePicker.launchImageLibraryAsync({
+      quality: 0.8,
+      allowsEditing: true,
+    });
+    if (res.canceled || !auth.currentUser) return;
+
     try {
-      /* הרשאות גלריה (נדרש במובייל) */
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert("אין הרשאה", "צריך לאשר גישה לגלריה כדי להעלות תמונה");
-        return;
-      }
-
-      /* פתיחת-Picker */
-      const res = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes:    ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        quality:       0.85,
-      });
-      if (res.canceled) return;
-
-      if (!auth.currentUser) {
-        Alert.alert("שגיאה", "לא אותר משתמש מחובר");
-        return;
-      }
-
       const uri = res.assets[0].uri;
-      const ext = uri.split(".").pop() ?? "jpg";
+      const ext = uri.split(".").pop() || "jpg";
+      const blob = await (await fetch(uri)).blob();
+      const path = `profilePictures/${auth.currentUser.uid}.${ext}`;
 
-      /* fetch → blob */
-      const blob: Blob = await (await fetch(uri)).blob();
-
-      /* Storage */
-      const storage = getStorage();
-      const path    = `profilePictures/${auth.currentUser.uid}.${ext}`;
-      const ref     = storageRef(storage, path);
+      const ref = storageRef(getStorage(), path);
       await uploadBytes(ref, blob);
-
       const url = await getDownloadURL(ref);
 
-      /* Firestore */
-      await updateDoc(doc(db, "users", auth.currentUser.email!), {
-        ProfilePicture: url,
-        lastUpdate:     serverTimestamp(),
-      });
-
+      await updateDoc(
+        doc(db, "users", auth.currentUser.email!),
+        { ProfilePicture: url, lastUpdate: serverTimestamp() }
+      );
       setData((prev) => prev && { ...prev, ProfilePicture: url });
-    } catch (err: any) {
-      console.error(err);
-      Alert.alert("שגיאת העלאה", err?.message ?? "אירעה שגיאה לא ידועה");
+    } catch (e: any) {
+      Alert.alert(t("uploadError"), e.message);
     }
-  }, [auth]);
+  }, [auth, t]);
 
-  /* ---------- UI מצבי ביניים ---------- */
-  if (loading)
-    return <Center><ActivityIndicator size="large" /></Center>;
+  /* ––––––––––––––––– UI ––––––––––––––––– */
 
-  if (!data)
-    return <Center><Text>לא נמצאו פרטי סטודנט 🤷‍♂️</Text></Center>;
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.center, { paddingTop: insets.top, backgroundColor: SURFACE_BG }]}>
+        <ActivityIndicator size="large" color={NEON} />
+      </SafeAreaView>
+    );
+  }
 
-  /* ---------- UI ראשי ---------- */
+  if (!data) {
+    return (
+      <SafeAreaView style={[styles.center, { paddingTop: insets.top, backgroundColor: SURFACE_BG }]}>
+        <Text style={[styles.error, { color: NEON }]}>{t("studentNotFound")}</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <LinearGradient colors={["#fafbff", "#f5f7fa"]} style={styles.container}>
-      {/* כפתור-העלאה */}
-      <Pressable style={styles.uploadBtn} onPress={handlePickImage}>
-        <Text style={styles.uploadTxt}>העלה תמונה</Text>
-      </Pressable>
+    <SafeAreaView style={[styles.flex, { backgroundColor: SURFACE_BG }]} edges={["top", "bottom"]}>
+      {/* גל ניאון עליון */}
+      <Svg style={styles.wave} width={SCREEN_WIDTH} height={180} viewBox={`0 0 ${SCREEN_WIDTH} 180`}>
+        <Path
+          d={`M0,0 C${SCREEN_WIDTH * 0.3},120 ${SCREEN_WIDTH * 0.7},-60 ${SCREEN_WIDTH},0 L${SCREEN_WIDTH},180 L0,180 Z`}
+          fill={NEON}
+        />
+      </Svg>
 
-      {/* לוגו */}
-      <Image source={logo} style={styles.logo} resizeMode="contain" />
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + 50, paddingBottom: insets.bottom + 30 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* כפתור העלאת תמונה */}
+        <Pressable style={[styles.upload, { backgroundColor: UPLOAD_BG }]} onPress={pickImage}>
+          <Ionicons name="camera" size={20} color={TEXT_PRIMARY} />
+          <Text style={[styles.uploadText, { color: TEXT_PRIMARY }]}>
+            {t("changePhoto")}
+          </Text>
+        </Pressable>
 
-      {/* כותרת + שם */}
-      <Text style={styles.title}>כרטיס סטודנט</Text>
-      <Text style={styles.name}>
-        {data.firstName} {data.lastName}
-      </Text>
+        {/* כרטיס הסטודנט */}
+        <Animated.View
+          style={[
+            styles.card,
+            {
+              backgroundColor: SURFACE_BG,
+              borderColor: NEON,
+              opacity: anim,
+              transform: [
+                {
+                  translateY: anim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [50, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <Text style={[styles.heading, { color: NEON }]}>
+            {t("studentCardHeading")}
+          </Text>
 
-      {/* תמונת-פרופיל */}
-      {data.ProfilePicture ? (
-        <Image source={{ uri: data.ProfilePicture }} style={styles.avatar} />
-      ) : (
-        <View style={[styles.avatar, styles.placeholder]}>
-          <Text style={{ color: "#999" }}>אין תמונה</Text>
-        </View>
-      )}
+          <Text style={[styles.name, { color: TEXT_PRIMARY }]}>
+            {data.firstName} {data.lastName}
+          </Text>
 
-      {/* ת״ז + שעון */}
-      <Text style={styles.idLabel}>תעודת זהות:</Text>
-      <Text style={styles.idNumber}>{data.ID}</Text>
-      <Text style={styles.time}>
-        {now.toLocaleDateString("he-IL")} {now.toLocaleTimeString("he-IL")}
-      </Text>
-    </LinearGradient>
+          {data.ProfilePicture ? (
+            <Image source={{ uri: data.ProfilePicture }} style={styles.avatar} />
+          ) : (
+            <View style={[styles.avatar, styles.avatarPlaceholder]}>
+              <Ionicons name="person" size={60} color="#999" />
+            </View>
+          )}
+
+          <View style={styles.infoRow}>
+            <Ionicons name="id-card" size={18} color={NEON} />
+            <Text style={[styles.infoText, { color: TEXT_PRIMARY }]}>{data.id}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Ionicons name="time" size={18} color={NEON} />
+            <Text style={[styles.infoText, { color: TEXT_PRIMARY }]}>
+              {new Date().toLocaleString("he-IL")}
+            </Text>
+          </View>
+        </Animated.View>
+
+        {/* לוגו מוסד */}
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-/* ---------- קומפוננטת Center ---------- */
-const Center = ({ children }: { children: React.ReactNode }) => (
-  <View style={styles.center}>{children}</View>
-);
-
-/* ---------- StyleSheet ---------- */
-const AVATAR_SIZE = 200;
-
+/* ––– Styles ––– */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    paddingTop:
-      Platform.OS === "android"
-        ? (StatusBar.currentHeight ?? 0) + 20
-        : 50,
-    backgroundColor: "#fafbff",
-    minHeight: SCREEN_HEIGHT,
-  },
+  flex: { flex: 1 },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  uploadBtn: {
+  error: { fontSize: 18, fontWeight: "600" },
+  wave: { position: "absolute", top: 0, width: "100%" },
+  container: { alignItems: "center", paddingHorizontal: 24 },
+  upload: {
     position: "absolute",
-    top: 15,
-    right: 20,
-    backgroundColor: "#4f6cf7",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    zIndex: 2,
-    ...Platform.select({
-      ios:     { shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 3 },
-      android: { elevation: 4 },
-    }),
-  },
-  uploadTxt: { color: "#fff", fontWeight: "600" },
-
-  logo:  { width: 160, height: 60, marginBottom: 10 },
-
-  title: { fontSize: 30, fontWeight: "700", color: "#333", marginBottom: 20 },
-  name:  { fontSize: 24, fontWeight: "600", marginBottom: 16 },
-
-  avatar: {
-    width:  AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: 12,
-    borderWidth: 3,
-    borderColor: "#4f6cf7",
-    marginBottom: 18,
-    overflow: "hidden",
-    backgroundColor: "#eef1ff",
-    justifyContent: "center",
+    right: 24,
+    top: 24,
+    flexDirection: "row",
     alignItems: "center",
+    padding: 10,
+    borderRadius: 20,
   },
-  placeholder: { backgroundColor: "#eef1ff" },
-
-  idLabel:  { fontSize: 18, marginBottom: 2, color: "#555" },
-  idNumber: { fontSize: 22, fontWeight: "500", letterSpacing: 1 },
-  time:     { marginTop: 26, fontSize: 16, color: "#666" },
+  uploadText: { marginLeft: 6, fontWeight: "600" },
+  card: {
+    width: "100%",
+    marginTop: 60,
+    borderRadius: 16,
+    borderWidth: 2,
+    padding: 24,
+    alignItems: "center",
+    shadowColor: NEON,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: "800",
+    textShadowColor: NEON,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 8,
+  },
+  name: { fontSize: 22, fontWeight: "600", marginVertical: 16 },
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 3,
+    borderColor: NEON,
+    marginBottom: 24,
+  },
+  avatarPlaceholder: { backgroundColor: "#333", justifyContent: "center", alignItems: "center" },
+  infoRow: { flexDirection: "row", alignItems: "center", marginTop: 12 },
+  infoText: { marginLeft: 8, fontSize: 16 },
+  logo: { width: 150, height: 150, marginTop: 30, marginBottom: 10 },
 });

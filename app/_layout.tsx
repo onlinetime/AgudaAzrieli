@@ -22,7 +22,7 @@ function InnerLayout() {
   return (
     <ThemeProvider value={theme}>
       {/* key על השפה — כשמשתנה השפה ה-Stack כולו מתאפס ומתרנדר מחדש */}
-      <Stack key={language} />
+      <Stack key={language} screenOptions={{headerShown:false}} />
     </ThemeProvider>
   );
 }

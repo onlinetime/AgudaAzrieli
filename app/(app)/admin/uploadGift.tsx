@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TextInput,
-  Button,
   Image,
   StyleSheet,
   TouchableOpacity,
   FlatList,
   Alert,
+  Button,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -23,43 +23,43 @@ import {
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useTheme } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 
 export default function UploadGift() {
   const { colors } = useTheme();
+  const { t } = useTranslation();
 
-  const [giftName, setGiftName] = useState("");
-  const [description, setDescription] = useState("");
-  const [imageUri, setImageUri] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [gifts, setGifts] = useState<any[]>([]);
+  const [giftName, setGiftName]         = useState("");
+  const [description, setDescription]   = useState("");
+  const [imageUri, setImageUri]         = useState<string | null>(null);
+  const [uploading, setUploading]       = useState(false);
+  const [gifts, setGifts]               = useState<any[]>([]);
 
+  /* ───────── Fetch existing gifts ───────── */
   const fetchGifts = async () => {
     const snap = await getDocs(collection(db, "gifts"));
     setGifts(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
   };
+  useEffect(() => { fetchGifts(); }, []);
 
-  useEffect(() => {
-    fetchGifts();
-  }, []);
-
+  /* ───────── Pick image ───────── */
   const pickImage = async () => {
     const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!granted) {
-      Alert.alert("Error", "Permission to access media library is required!");
+      Alert.alert(t("error"), t("needMediaPermission"));
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
     });
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-    }
+    if (!res.canceled) setImageUri(res.assets[0].uri);
   };
 
+  /* ───────── Submit new gift ───────── */
   const handleSubmit = async () => {
     if (!giftName.trim()) {
-      Alert.alert("Error", "Please fill in the gift name.");
+      Alert.alert(t("error"), t("giftNameRequired"));
       return;
     }
     setUploading(true);
@@ -69,84 +69,94 @@ export default function UploadGift() {
         description,
         picture: imageUri || "",
       });
-      Alert.alert("Success", "Gift added successfully!");
-      setGiftName("");
-      setDescription("");
-      setImageUri(null);
+      Alert.alert(t("success"), t("giftAddSuccess"));
+      setGiftName(""); setDescription(""); setImageUri(null);
       fetchGifts();
-    } catch (err) {
-      console.error(err);
-      Alert.alert("Error", "Failed to add gift. Please try again.");
+    } catch (e) {
+      console.error(e);
+      Alert.alert(t("error"), t("giftAddFailed"));
     }
     setUploading(false);
   };
 
+  /* ───────── Delete gift ───────── */
   const handleDelete = (id: string) => {
-    Alert.alert("Delete Gift", "Are you sure?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          await deleteDoc(doc(db, "gifts", id));
-          Alert.alert("Deleted", "Gift deleted");
-          fetchGifts();
+    Alert.alert(
+      t("deleteGift"),
+      t("areYouSure"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("delete"),
+          style: "destructive",
+          onPress: async () => {
+            await deleteDoc(doc(db, "gifts", id));
+            Alert.alert(t("deleted"), t("giftDeleted"));
+            fetchGifts();
+          },
         },
-      },
-    ]);
+      ],
+      { cancelable: true }
+    );
   };
 
+  /* ───────── Header (form) ───────── */
   const renderHeader = () => (
     <View>
       <Text style={[styles.title, { color: colors.text }]}>
-        Add New Gift
+        {t("giftAddTitle")}
       </Text>
 
       <Text style={[styles.label, { color: colors.text }]}>
-        Gift Name
+        {t("giftNameLabel")}
       </Text>
       <TextInput
-        style={[styles.input, { backgroundColor: colors.card, color: colors.text, borderColor: colors.border }]}
-        placeholder="Enter gift name"
+        style={[
+          styles.input,
+          { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
+        ]}
+        placeholder={t("giftNamePlaceholder")}
         placeholderTextColor={colors.border}
         value={giftName}
         onChangeText={setGiftName}
       />
 
       <Text style={[styles.label, { color: colors.text }]}>
-        Description
+        {t("giftDescLabel")}
       </Text>
       <TextInput
         style={[
           styles.input,
-          { height: 100 },
-          { backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
+          { height: 100, backgroundColor: colors.card, color: colors.text, borderColor: colors.border },
         ]}
-        placeholder="Enter description"
+        placeholder={t("giftDescPlaceholder")}
         placeholderTextColor={colors.border}
         value={description}
         onChangeText={setDescription}
         multiline
       />
 
-      <Text style={[styles.label, { color: colors.text }]}>Picture</Text>
+      <Text style={[styles.label, { color: colors.text }]}>
+        {t("giftImageLabel")}
+      </Text>
       {imageUri ? (
         <Image source={{ uri: imageUri }} style={styles.imagePreview} />
       ) : (
         <View style={[styles.imagePlaceholder, { borderColor: colors.border }]}>
-          <Text style={{ color: colors.text }}>No image selected</Text>
+          <Text style={{ color: colors.text }}>{t("giftNoImage")}</Text>
         </View>
       )}
+
       <TouchableOpacity
         style={[styles.button, { backgroundColor: colors.primary }]}
         onPress={pickImage}
       >
-        <Text style={styles.buttonText}>Pick an Image</Text>
+        <Text style={styles.buttonText}>{t("giftPickImage")}</Text>
       </TouchableOpacity>
 
       <View style={styles.submitContainer}>
         <Button
-          title={uploading ? "Uploading..." : "Add Gift"}
+          title={uploading ? t("uploading") : t("giftSubmit")}
           onPress={handleSubmit}
           disabled={uploading}
           color={colors.primary}
@@ -154,11 +164,12 @@ export default function UploadGift() {
       </View>
 
       <Text style={[styles.title, { marginTop: 30, color: colors.text }]}>
-        Open Gifts
+        {t("openGifts")}
       </Text>
     </View>
   );
 
+  /* ───────── Render ───────── */
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -179,11 +190,10 @@ export default function UploadGift() {
               <Text style={[styles.giftName, { color: colors.text }]}>
                 {item.name}
               </Text>
-              <Text style={{ color: colors.text }}>
-                {item.description}
-              </Text>
+              <Text style={{ color: colors.text }}>{item.description}</Text>
+
               <Button
-                title="Delete"
+                title={t("delete")}
                 color={colors.notification}
                 onPress={() => handleDelete(item.id)}
               />
@@ -191,7 +201,7 @@ export default function UploadGift() {
           )}
           ListEmptyComponent={
             <Text style={[{ textAlign: "center", margin: 16, color: colors.text }]}>
-              No open gifts.
+              {t("noOpenGifts")}
             </Text>
           }
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -201,6 +211,7 @@ export default function UploadGift() {
   );
 }
 
+/* ───────── Styles ───────── */
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
   title: {
@@ -227,7 +238,12 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   buttonText: { color: "#fff", fontWeight: "600" },
-  imagePreview: { width: "100%", height: 200, borderRadius: 8, marginBottom: 10 },
+  imagePreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
   imagePlaceholder: {
     width: "100%",
     height: 200,

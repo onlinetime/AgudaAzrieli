@@ -1,5 +1,7 @@
+/* ─────────────────────────────────────────────────
+   app/(app)/admin/add-store.tsx     – FULL VERSION
+   ───────────────────────────────────────────────── */
 import React, { useState } from "react";
-import { Ionicons } from "@expo/vector-icons";
 import {
   View,
   Text,
@@ -11,58 +13,63 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { Ionicons } from "@expo/vector-icons";
 import { collection, addDoc } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useTheme } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 
 export default function AdminAddStore() {
   const { colors } = useTheme();
+  const { t }   = useTranslation();
 
-  const [storeName, setStoreName] = useState("");
-  const [address, setAddress] = useState("");
-  const [description, setDescription] = useState("");
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [category, setCategory] = useState("");
-  const [discount, setDiscount] = useState("");
-  const [imageUri, setImageUri] = useState<string | null>(null);
+  /* ------------ state ------------ */
+  const [storeName, setStoreName]   = useState("");
+  const [address,   setAddress]     = useState("");
+  const [description,setDescription]= useState("");
+  const [phoneNumber,setPhoneNumber]= useState("");
+  const [category,  setCategory]    = useState("");
+  const [discount,  setDiscount]    = useState("");
+  const [imageUri,  setImageUri]    = useState<string | null>(null);
 
+  /* ------------ pick image ------------ */
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      alert("Permission to access media library is required!");
+      Alert.alert(t("permissionMedia"));
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const res = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 1,
     });
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-    }
+    if (!res.canceled) setImageUri(res.assets[0].uri);
   };
 
+  /* ------------ submit ------------ */
   const handleSubmit = async () => {
     if (!storeName.trim()) {
-      alert("Please fill in the store name.");
+      Alert.alert(t("storeNameRequired"));
       return;
     }
     if (!discount.trim()) {
-      alert("Please fill in the discount.");
+      Alert.alert(t("discountRequired"));
       return;
     }
     try {
       await addDoc(collection(db, "stores"), {
-        name: storeName,
-        picture: imageUri || "",
+        name:        storeName,
+        picture:     imageUri || "",
         address,
         description,
         phoneNumber,
         category,
         discount,
       });
-      alert("Store added successfully!");
+      Alert.alert(t("storeAddedSuccess"));
       setStoreName("");
       setAddress("");
       setDescription("");
@@ -70,12 +77,22 @@ export default function AdminAddStore() {
       setCategory("");
       setDiscount("");
       setImageUri(null);
-    } catch (error) {
-      console.error("Error adding store:", error);
-      alert("Failed to add store. Please try again.");
+    } catch (e) {
+      console.error("add store:", e);
+      Alert.alert(t("failedAddStore"));
     }
   };
 
+  /* helper לבניית שדות */
+  const fields = [
+    { key:"address",   label:t("addressLabel"),   ph:t("addressPlaceholder"),   val:address,   setter:setAddress },
+    { key:"desc",      label:t("descriptionLabel"), ph:t("descriptionPlaceholder"), val:description, setter:setDescription, multiline:true, height:100 },
+    { key:"phone",     label:t("phoneLabel"),     ph:t("phonePlaceholder"),     val:phoneNumber,setter:setPhoneNumber, keyboard:"phone-pad" },
+    { key:"category",  label:t("categoryLabel"),  ph:t("categoryPlaceholder"),  val:category,  setter:setCategory },
+    { key:"discount",  label:t("discountLabel"),  ph:t("discountPlaceholder"),  val:discount,  setter:setDiscount,  keyboard:"numeric" },
+  ] as const;
+
+  /* ------------ UI ------------ */
   return (
     <KeyboardAvoidingView
       style={[styles.flex, { backgroundColor: colors.background }]}
@@ -83,55 +100,47 @@ export default function AdminAddStore() {
     >
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={[styles.title, { color: colors.text }]}>
-          Add New Store
+          {t("addStoreTitle")}
         </Text>
 
-        <Text style={[styles.label, { color: colors.text }]}>Store Name</Text>
+        {/* -------- Store name -------- */}
+        <Text style={[styles.label, { color: colors.text }]}>
+          {t("storeNameLabel")}
+        </Text>
         <TextInput
           style={[
             styles.input,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              color: colors.text,
-            },
+            { backgroundColor: colors.card, borderColor: colors.border, color: colors.text },
           ]}
-          placeholder="Enter store name"
+          placeholder={t("storeNamePlaceholder")}
           placeholderTextColor={colors.border}
           value={storeName}
           onChangeText={setStoreName}
         />
 
-        <Text style={[styles.label, { color: colors.text }]}>Picture</Text>
+        {/* -------- Image -------- */}
+        <Text style={[styles.label, { color: colors.text }]}>
+          {t("pictureLabel")}
+        </Text>
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.imagePreview} />
         ) : (
-          <View
-            style={[
-              styles.imagePlaceholder,
-              { borderColor: colors.border },
-            ]}
-          >
-            <Text style={{ color: colors.border }}>No image selected</Text>
+          <View style={[styles.imagePlaceholder, { borderColor: colors.border }]}>
+            <Text style={{ color: colors.border }}>{t("noImageSelected")}</Text>
           </View>
         )}
         <TouchableOpacity
           style={[styles.button, { backgroundColor: colors.primary }]}
           onPress={pickImage}
         >
-          <Text style={[styles.buttonText, { color: colors.text }]}>
-            Pick an Image
+          <Text style={[styles.buttonText, { color: "#fff" }]}>
+            {t("pickImage")}
           </Text>
         </TouchableOpacity>
 
-        {[
-          { label: "Address", value: address, setter: setAddress },
-          { label: "Description", value: description, setter: setDescription, multiline: true, height: 100 },
-          { label: "Phone Number", value: phoneNumber, setter: setPhoneNumber, keyboardType: "phone-pad" },
-          { label: "Category", value: category, setter: setCategory },
-          { label: "Discount", value: discount, setter: setDiscount, keyboardType: "numeric" },
-        ].map((f, i) => (
-          <View key={i}>
+        {/* -------- dynamic fields -------- */}
+        {fields.map((f) => (
+          <View key={f.key as string}>
             <Text style={[styles.label, { color: colors.text }]}>{f.label}</Text>
             <TextInput
               style={[
@@ -143,11 +152,11 @@ export default function AdminAddStore() {
                   height: f.height || 48,
                 },
               ]}
-              placeholder={`Enter ${f.label.toLowerCase()}`}
+              placeholder={f.ph}
               placeholderTextColor={colors.border}
-              value={f.value}
+              value={f.val}
               onChangeText={f.setter}
-              keyboardType={(f as any).keyboardType}
+              keyboardType={f.keyboard as any}
               multiline={f.multiline}
             />
           </View>
@@ -155,7 +164,7 @@ export default function AdminAddStore() {
 
         <View style={styles.submitContainer}>
           <Button
-            title="Add Store"
+            title={t("addStoreSubmit")}
             onPress={handleSubmit}
             color={colors.primary}
           />
@@ -165,54 +174,19 @@ export default function AdminAddStore() {
   );
 }
 
+/* ------------ styles (unchanged) ------------ */
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  container: {
-    padding: 20,
-    paddingTop: 40,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: "700",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginVertical: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    marginBottom: 8,
-  },
-  button: {
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginVertical: 10,
-  },
-  buttonText: {
-    fontWeight: "600",
-  },
-  imagePreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
+  container: { padding: 20, paddingTop: 40 },
+  title: { fontSize: 26, fontWeight: "700", marginBottom: 20, textAlign: "center" },
+  label: { fontSize: 16, fontWeight: "600", marginVertical: 8 },
+  input: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 12, marginBottom: 8 },
+  button: { padding: 12, borderRadius: 8, alignItems: "center", marginVertical: 10 },
+  buttonText: { fontWeight: "600" },
+  imagePreview: { width: "100%", height: 200, borderRadius: 8, marginBottom: 10 },
   imagePlaceholder: {
-    width: "100%",
-    height: 200,
-    borderWidth: 1,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 10,
+    width: "100%", height: 200, borderWidth: 1, borderRadius: 8,
+    alignItems: "center", justifyContent: "center", marginBottom: 10,
   },
-  submitContainer: {
-    marginTop: 20,
-  },
+  submitContainer: { marginTop: 20 },
 });

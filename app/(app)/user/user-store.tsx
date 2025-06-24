@@ -1,58 +1,31 @@
-// app/(app)/user/user-store.tsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
+  View,
+  Text,
   StyleSheet,
   FlatList,
-  Image,
-  Pressable,
-  Platform,
-  StatusBar,
-  View,
-  ActivityIndicator,
   TextInput,
+  Pressable,
+  ImageBackground,
+  RefreshControl,
+  ActivityIndicator,
   Animated,
-  Dimensions,
-  Text,
-  ScrollView,
+  Platform,
 } from "react-native";
-import { useTheme } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useTranslation } from "react-i18next";
+import { router } from "expo-router";
+import { useSettings } from "../../../contexts/SettingsContext";
 
-/* ------------ מילון תרגום ידני ------------ */
-const HE_EN: Record<string, string> = {
-  /* UI (כותרות, placeholder-ים וכו’) */
-  storesList: "Stores List",
-  searchStore: "Search store…",
-  all: "All",
-  noStores: "No stores found",
+// *––  PALETTE (unchanged for light mode) ––*
+const ACCENT   = "#ff1744";   //  red accent stays identical in both modes
+const BG_LIGHT = "#fff";       //  main surface light
+const BG_GREY  = "#EEE";       //  chips / search box light
 
-  /* קטגוריות */
-  אוכל: "Food",
-  פנאי: "Leisure",
-
-  /* שמות חנויות */
-  "ימית 2000": "Yamit 2000",
-  "בורגרס בר": "Burgers Bar",
-  "(ישראל) השמן": "Shipudei Hamen",
-
-  /* תיאורים */
-  'סטודנטים יקרים, עשינו שת"פ חדש עם החנות בורגרסבר ממליצים!!':
-    "Dear students – new collab with Burgers Bar!!",
-  "הנחה שווה ומפנקת לסטודנטים": "Great student discount",
-};
-/* ------------------------------------------ */
-
-/** פונקציית תרגום קצרה – אם אין במילון, מחזירה את הטקסט כמו שהוא */
-const tr = (txt: string, lang: string) =>
-  lang === "en" ? HE_EN[txt] ?? txt : txt;
-
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
-/* ---------- טיפוסי־נתונים ---------- */
 interface Store {
   id: string;
   name: string;
@@ -65,303 +38,235 @@ interface Store {
 }
 
 export default function UserStoreList() {
-  const { colors } = useTheme();
-  const { i18n } = useTranslation();
-  const lang = i18n.language;
+  /* -------------------------------------------------- hooks */
+  const insets               = useSafeAreaInsets();
+  const { t, i18n }          = useTranslation();
+  const { darkMode }         = useSettings();
+  const fadeAnim             = useRef(new Animated.Value(0)).current;
 
-  const [stores, setStores] = useState<Store[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  /* -------------------------------------------------- colours */
+  const SURFACE_BG           = darkMode ? "#121212" : BG_LIGHT;
+  const GREY_BG              = darkMode ? "#2A2A2A" : BG_GREY;
+  const TEXT_PRIMARY         = darkMode ? "#E0E0E0" : "#121212";
+  const TEXT_SECONDARY       = darkMode ? "#C0C0C0" : "#555";
+  const CHIP_TEXT_DEFAULT    = darkMode ? "#E0E0E0" : "#333";
+  const PLACEHOLDER          = "#888";
 
-  /* ---------- מאזין לפיירסטור ---------- */
-  useEffect(() => {
+  /* -------------------------------------------------- state */
+  const lang                 = i18n.language;
+  const [stores, setStores]  = useState<Store[]>([]);
+  const [loading, setLoading]            = useState(true);
+  const [refreshing, setRefreshing]      = useState(false);
+  const [search, setSearch]              = useState("");
+  const [category, setCategory]          = useState<string>(t("All"));
+
+  /* -------------------------------------------------- data fetch */
+  const fetchStores = useCallback(() => {
+    setRefreshing(true);
     const unsub = onSnapshot(
       collection(db, "stores"),
       (snap) => {
-        const data: Store[] = snap.docs.map((d) => ({
-          id: d.id,
-          ...(d.data() as Omit<Store, "id">),
-        }));
-        setStores(data);
-
-        const uniqCats = Array.from(new Set(data.map((s) => s.category)));
-        setCategories(["All", ...uniqCats]);
-
+        setStores(snap.docs.map((d) => ({ id: d.id, ...(d.data() as any) })));
         setLoading(false);
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start();
+        setRefreshing(false);
+        Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
       },
-      (err) => {
-        console.error("Error fetching stores:", err);
+      () => {
         setLoading(false);
+        setRefreshing(false);
       }
     );
+    return unsub;
+  }, [fadeAnim]);
+
+  useEffect(() => {
+    const unsub = fetchStores();
     return () => unsub();
-  }, []);
+  }, [fetchStores]);
 
-  /* ---------- סינון לפי חיפוש + קטגוריה ---------- */
-  const filtered = stores.filter((s) => {
-    const matchesSearch = tr(s.name, lang)
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase());
-    const matchesCat = selectedCategory === "All" || s.category === selectedCategory;
-    return matchesSearch && matchesCat;
-  });
+  /* -------------------------------------------------- derived */
+  const categories = useMemo(() => {
+    const cats = Array.from(new Set(stores.map((s) => s.category)));
+    return [t("All"), ...cats];
+  }, [stores, t]);
 
-  /* ---------- כותרות UI ---------- */
-  const headerTitle = tr("storesList", lang);
-  const placeholder = tr("searchStore", lang);
-  const labelAll = tr("all", lang);
-  const noStoresTxt = tr("noStores", lang);
+  const filtered = useMemo(() => {
+    return stores.filter((s) => {
+      const nameMatch = s.name.toLowerCase().includes(search.toLowerCase());
+      const catMatch  = category === t("All") || s.category === category;
+      return nameMatch && catMatch;
+    });
+  }, [stores, search, category]);
 
-  /* ---------- כרטיס חנות ---------- */
-  const renderStore = ({ item }: { item: Store }) => (
-    <Animated.View style={[styles.card, { opacity: fadeAnim }]}>
-      <Pressable
-        style={({ pressed }) => [
-          styles.cardPressable,
-          pressed && styles.cardPressed,
-        ]}
-      >
-        {/* תמונה / placeholder */}
-        {item.picture ? (
-          <Image source={{ uri: item.picture }} style={styles.image} />
-        ) : (
-          <View style={styles.imagePlaceholder}>
-            <Ionicons name="image-outline" size={40} color="#BBB" />
-          </View>
-        )}
+  /* -------------------------------------------------- loading */
+  if (loading) {
+    return (
+      <SafeAreaView edges={["top"]} style={[styles.loadingContainer, { backgroundColor: SURFACE_BG }]}>        
+        <ActivityIndicator size="large" color={ACCENT} />
+      </SafeAreaView>
+    );
+  }
 
-        {/* תוכן */}
-        <View style={styles.content}>
-          {/* כותרת + קטגוריה */}
-          <View style={styles.headerRow}>
-            <Text style={styles.title}>{tr(item.name, lang)}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{tr(item.category, lang)}</Text>
-            </View>
-          </View>
-
-          {/* תיאור */}
-          <Text style={styles.description} numberOfLines={2} ellipsizeMode="tail">
-            {tr(item.description, lang)}
-          </Text>
-
-          {/* כתובת + טלפון */}
-          <View style={styles.infoRow}>
-            <Ionicons name="location-sharp" size={14} color={colors.text} />
-            <Text style={styles.infoText}>{item.address}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Ionicons name="call-outline" size={14} color={colors.text} />
-            <Text style={styles.infoText}>{item.phoneNumber}</Text>
-          </View>
-        </View>
-      </Pressable>
-
-      {/* תגית הנחה */}
-      <View style={styles.footerRow}>
-        <LinearGradient colors={["#FDE047", "#FACC15"]} style={styles.discountBadge}>
-          <Text style={styles.discountText}>-{item.discount}%</Text>
-        </LinearGradient>
-      </View>
-    </Animated.View>
-  );
-
-  /* ---------- Render ---------- */
+  /* -------------------------------------------------- render */
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* כותרת עמוד */}
+    <SafeAreaView edges={["top"]} style={[styles.flex, { backgroundColor: SURFACE_BG }]}>      
+      {/* HEADER */}
       <LinearGradient
-        colors={[colors.primary, colors.background]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
+        colors={[ACCENT, "#d32f2f"]}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={[styles.header, { paddingTop: insets.top + 8 }]}
       >
-        <View style={styles.headerContent}>
-          <Ionicons name="cart-outline" size={28} color="#fff" style={styles.headerIcon} />
-          <Text style={styles.headerText}>{headerTitle}</Text>
-        </View>
+        <Pressable onPress={() => router.back()} style={styles.headerBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </Pressable>
+        <Text style={styles.headerTitle}>{t("storesList")}</Text>
+        <View style={{ width: 24 }} />
       </LinearGradient>
 
-      {/* חיפוש */}
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={20} color="#888" style={styles.searchIcon} />
-        <TextInput
-          style={[styles.searchInput, { backgroundColor: colors.card }]}
-          placeholder={placeholder}
-          placeholderTextColor="#888"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          autoCapitalize="none"
-          clearButtonMode="while-editing"
+      {/* SEARCH & FILTER */}
+      <View style={styles.controls}>
+        <View style={[styles.searchBox, { backgroundColor: GREY_BG }]}>          
+          <Ionicons name="search-outline" size={20} color="#888" />
+          <TextInput
+            style={[styles.searchInput, { color: TEXT_PRIMARY }]}
+            placeholder={t("searchStore")}
+            placeholderTextColor={PLACEHOLDER}
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
+        <FlatList
+          horizontal
+          data={categories}
+          keyExtractor={(c) => c}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterList}
+          renderItem={({ item }) => {
+            const isActive = category === item;
+            return (
+              <Pressable
+                onPress={() => setCategory(item)}
+                style={[styles.chip, { backgroundColor: isActive ? ACCENT : GREY_BG }]}
+              >
+                <Text
+                  style={[styles.chipText, { color: isActive ? BG_LIGHT : CHIP_TEXT_DEFAULT }]}
+                  numberOfLines={1}
+                >
+                  {t(item, item)}
+                </Text>
+              </Pressable>
+            );
+          }}
         />
       </View>
 
-      {/* פילטר קטגוריות */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.filterContainer}
-        contentContainerStyle={styles.filterContent}
-      >
-        {categories.map((cat) => (
-          <Pressable
-            key={cat}
-            style={[
-              styles.filterChip,
-              selectedCategory === cat && {
-                backgroundColor: colors.primary,
-                borderColor: colors.primary,
-              },
-            ]}
-            onPress={() => setSelectedCategory(cat)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                selectedCategory === cat ? { color: "#fff" } : { color: "#111827" },
-              ]}
-            >
-              {cat === "All" ? labelAll : tr(cat, lang)}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
-
-      {/* רשימה */}
-      {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
-      ) : (
+      {/* LIST */}
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
         <FlatList
           data={filtered}
-          keyExtractor={(item) => item.id}
-          renderItem={renderStore}
+          keyExtractor={(s) => s.id}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={fetchStores} tintColor={ACCENT} />}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          ListEmptyComponent={() => (
+          ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="storefront-outline" size={60} color="#BBB" />
-              <Text style={styles.emptyText}>{noStoresTxt}</Text>
+              <Ionicons name="alert-circle-outline" size={48} color="#888" />
+              <Text style={[styles.emptyText, { color: TEXT_SECONDARY }]}>{t("noStores")}</Text>
+            </View>
+          }
+          renderItem={({ item }) => (
+            <View style={[styles.card, { backgroundColor: SURFACE_BG, borderColor: ACCENT }]}>              
+              {item.picture && (
+                <ImageBackground source={{ uri: item.picture }} style={styles.image} imageStyle={{ opacity: 0.7 }}>
+                  <LinearGradient colors={["transparent", "rgba(0,0,0,0.4)"]} style={styles.imageOverlay} />
+                </ImageBackground>
+              )}
+
+              <View style={styles.cardContent}>
+                <View style={styles.row}>
+                  <Text style={[styles.storeName, { color: TEXT_PRIMARY }]} numberOfLines={1}>
+                    {item.name}
+                  </Text>
+                  <View style={[styles.discountBadge, { backgroundColor: ACCENT + "22" }]}>
+                    <Text style={[styles.discountText, { color: ACCENT }]}>-{item.discount}%</Text>
+                  </View>
+                </View>
+
+                <Text style={[styles.categoryLabel, { color: TEXT_SECONDARY }]}>
+                  {t(item.category, item.category)}
+                </Text>
+                {!!item.description && (
+                  <Text style={[styles.description, { color: TEXT_SECONDARY }]} numberOfLines={2}>
+                    {item.description}
+                  </Text>
+                )}
+
+                <View style={styles.row}>
+                  <Ionicons name="location-sharp" size={14} color={TEXT_SECONDARY} />
+                  <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>{item.address}</Text>
+                </View>
+                <View style={styles.row}>
+                  <Ionicons name="call-outline" size={14} color={TEXT_SECONDARY} />
+                  <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>{item.phoneNumber}</Text>
+                </View>
+              </View>
             </View>
           )}
         />
-      )}
-    </View>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
-/* ---------- styles ---------- */
-const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.9, 360);
-
+/* ––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––– */
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
+  flex: { flex: 1 },
+  loadingContainer: { flex: 1, justifyContent: "center" },
+
   header: {
-    paddingVertical: 20,
-    alignItems: "center",
-    justifyContent: "center",
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
-    elevation: 5,
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingHorizontal: 12, paddingBottom: 12,
   },
-  headerContent: { flexDirection: "row", alignItems: "center" },
-  headerIcon: { marginRight: 8 },
-  headerText: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#fff",
-    letterSpacing: 1,
-    textShadowColor: "rgba(0,0,0,0.3)",
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+  headerBtn: { padding: 4 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
+
+  controls: { paddingHorizontal: 16, paddingTop: 12 },
+  searchBox: {
+    flexDirection: "row", alignItems: "center", borderRadius: 24,
+    paddingHorizontal: 12, paddingVertical: Platform.OS === "android" ? 0 : 8,
+    marginBottom: 12,
   },
-  searchContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    margin: 16,
-    borderRadius: 24,
-    overflow: "hidden",
-    elevation: 2,
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 16, height: 36 },
+
+  filterList: { paddingVertical: 8 },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginRight: 8,
+    minWidth: 60, alignItems: "center",
   },
-  searchIcon: { paddingHorizontal: 12 },
-  searchInput: { flex: 1, height: 40, fontSize: 16, paddingRight: 12 },
-  filterContainer: { maxHeight: 80, marginBottom: 24, marginTop: 16, paddingVertical: 8 },
-  filterContent: { paddingHorizontal: 24, alignItems: "center", paddingRight: 32 },
-  filterChip: {
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 40,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    backgroundColor: "#fff",
-  },
-  filterText: { fontSize: 16, fontWeight: "500" },
-  list: { alignItems: "center", paddingBottom: 24 },
-  loader: { marginTop: 40 },
+  chipText: { fontSize: 14, fontWeight: "500" },
+
+  list: { paddingHorizontal: 16, paddingBottom: 32 },
+  emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 60 },
+  emptyText: { fontSize: 16, marginTop: 8 },
+
   card: {
-    width: CARD_WIDTH,
-    marginVertical: 6,
-    borderRadius: 16,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 4,
+    marginBottom: 20, borderRadius: 16, borderWidth: 2, overflow: "hidden",
+    ...Platform.select({
+      ios: { shadowColor: ACCENT, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12 },
+      android: { elevation: 6 },
+    }),
   },
-  cardPressable: { borderRadius: 16, overflow: "hidden" },
-  cardPressed: { opacity: 0.8 },
-  image: { width: "100%", height: 160 },
-  imagePlaceholder: {
-    width: "100%",
-    height: 160,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f0f0f0",
-  },
-  content: { padding: 22 },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  title: { fontSize: 18, fontWeight: "600", color: "#111827", flex: 1 },
-  badge: {
-    backgroundColor: "#E5E7EB",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: { fontSize: 12, fontWeight: "500", color: "#374151" },
-  description: { fontSize: 14, color: "#6B7280", marginBottom: 12 },
-  infoRow: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  infoText: { fontSize: 13, color: "#4B5563", marginLeft: 6, flex: 1 },
-  footerRow: {
-    padding: 12,
-    borderTopWidth: 1,
-    borderColor: "#F3F4F6",
-    alignItems: "flex-start",
-  },
-  discountBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  discountText: { color: "#1F2937", fontWeight: "600" },
-  emptyContainer: { marginTop: 60, alignItems: "center" },
-  emptyText: { marginTop: 12, fontSize: 16, color: "#9CA3AF" },
+  image: { width: "100%", height: 150 },
+  imageOverlay: { ...StyleSheet.absoluteFillObject },
+
+  cardContent: { padding: 16 },
+  row: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  storeName: { flex: 1, fontSize: 18, fontWeight: "700" },
+
+  discountBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  discountText: { fontSize: 14, fontWeight: "600" },
+
+  categoryLabel: { marginTop: 6, fontSize: 14, fontWeight: "500" },
+  description: { marginTop: 6, fontSize: 13 },
+  meta: { fontSize: 13, marginLeft: 6 },
 });
