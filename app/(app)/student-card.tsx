@@ -26,6 +26,7 @@ import {
 import { getFirebaseAuth, db } from "../../firebase";
 import { useSettings } from "../../contexts/SettingsContext";
 import { useTranslation } from "react-i18next";
+import { Asset } from "expo-asset";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const logo = require("../../assets/images/collegeLogo.png");
@@ -68,9 +69,9 @@ export default function StudentCardScreen() {
   /* שליפת נתוני סטודנט */
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      if (user?.email) {
+      if (user) {
         try {
-          const snap = await getDoc(doc(db, "users", user.email));
+          const snap = await getDoc(doc(db, "users", user.uid)); // <-- use user.uid
           if (snap.exists()) setData(snap.data() as StudentData);
         } catch {
           Alert.alert(t("error"), t("couldNotLoadStudent"));
@@ -94,8 +95,9 @@ export default function StudentCardScreen() {
 
     try {
       const uri = res.assets[0].uri;
-      const ext = uri.split(".").pop() || "jpg";
+      console.log("Selected image URI:", uri);
       const blob = await (await fetch(uri)).blob();
+      const ext = uri.split(".").pop() || "jpg";
       const path = `profilePictures/${auth.currentUser.uid}.${ext}`;
 
       const ref = storageRef(getStorage(), path);
@@ -103,12 +105,13 @@ export default function StudentCardScreen() {
       const url = await getDownloadURL(ref);
 
       await updateDoc(
-        doc(db, "users", auth.currentUser.email!),
+        doc(db, "users", auth.currentUser.uid), // <-- use user.uid
         { ProfilePicture: url, lastUpdate: serverTimestamp() }
       );
       setData((prev) => prev && { ...prev, ProfilePicture: url });
     } catch (e: any) {
-      Alert.alert(t("uploadError"), e.message);
+      console.log("Upload error:", e, e.serverResponse);
+      Alert.alert(t("uploadError"), e.message || String(e));
     }
   }, [auth, t]);
 

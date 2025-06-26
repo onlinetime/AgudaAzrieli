@@ -4,3 +4,4 @@ export const clean = (s: string) =>
     .replace(/\u00A0/g, " ")                    // NBSP
     .replace(/\s+/g, " ")                       // collapse spaces
     .trim();
+export default () => null;

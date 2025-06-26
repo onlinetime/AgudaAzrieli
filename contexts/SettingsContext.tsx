@@ -49,7 +49,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
-      const userDocId = user.email ?? user.uid;   // תואם למסמך-המשתמש
+      const userDocId = user.uid;   // Always use UID
       const ref = doc(db, "users", userDocId);
 
       /* --- טעינת הגדרות --- */
@@ -81,7 +81,7 @@ export const SettingsProvider = ({ children }: { children: ReactNode }) => {
   const save = async (patch: Partial<Settings>) => {
     const u = getAuth().currentUser;
     if (!u) return;
-    const userDocId = u.email ?? u.uid;
+    const userDocId = u.uid;
     const ref = doc(db, "users", userDocId);
     await updateDoc(ref, {
       [`settings`]: { ...state, ...patch },   // merge בתוך map-field

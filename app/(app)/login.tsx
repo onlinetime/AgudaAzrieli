@@ -25,68 +25,33 @@ export default function Login() {
 
   const handleLogin = async () => {
     setMessage("");
-    console.debug("🚀 handleLogin called");
-    console.debug("Email:", email);
-    console.debug("Password (length):", password.length);
-
-    //let auth;
-    // try {
-    //   console.debug("Importing signInWithEmailAndPassword...");
-    //   // const mod = await import("firebase/auth");
-    //   //console.debug("Module keys:", Object.keys(mod));
-    //   //auth = getFirebaseAuth();
-    //   console.debug("Auth instance:", auth);
-    //   console.debug("Auth.app:", auth.app);
-    // } catch (e: any) {
-    //   console.error("❌ Error during getFirebaseAuth():", e, e.code, e.message);
-    //   setMessage(`Debug: auth init failed: ${e.message}`);
-    //   return;
-    // }
-
-    // trim and validate
     const e = email.trim();
     const p = password;
     if (!e || !p) {
-      console.warn("⚠️ Missing email or password");
       setMessage("Enter email and password");
       return;
     }
 
     try {
-      console.debug("Calling signInWithEmailAndPassword...");
       const userCredential = await signInWithEmailAndPassword(auth, e, p);
-      console.log("✅ signInWithEmailAndPassword returned:", userCredential);
-
       const user = userCredential.user;
-      console.debug("User object:", user);
 
-      console.debug("Looking up user in Firestore:", user.email);
-      const userDocRef = doc(db, "users", user.email!);
+      // Fetch Firestore user doc by Auth UID (doc ID)
+      const userDocRef = doc(db, "users", user.uid);
       const userSnap = await getDoc(userDocRef);
-      console.debug("Firestore snapshot exists?", userSnap.exists());
-
       if (!userSnap.exists()) {
         setMessage("User profile not found in Firestore.");
         return;
       }
-
       const userData = userSnap.data();
-      console.debug("Fetched userData:", userData);
       setMessage("Login successful!");
 
       if (userData.isAdmin === true) {
-        console.debug("User is admin, routing to /admin/admin-home");
         router.replace("/admin/admin-home");
       } else {
-        console.debug("User is regular, routing to /user-home");
-        router.replace("/user/user-home")
+        router.replace("/user/user-home");
       }
     } catch (err: any) {
-      console.error("❌ signIn error:", err, err.code, err.message);
-      Alert.alert(
-        "Login failed",
-        `Error code: ${err.code}\nMessage: ${err.message}`
-      );
       setMessage(`Login failed: ${err.code || ""} ${err.message}`);
     }
   };

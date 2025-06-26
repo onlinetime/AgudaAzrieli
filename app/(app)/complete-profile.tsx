@@ -10,8 +10,8 @@ import {
 } from "react-native";
 import { useLocalSearchParams, router } from "expo-router";
 import { db } from "../../firebase";
-import { doc, updateDoc } from "firebase/firestore";
-import { PhoneAuthProvider, signInWithCredential } from "firebase/auth";
+import { doc, updateDoc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
+import { PhoneAuthProvider, signInWithCredential, createUserWithEmailAndPassword, linkWithCredential, EmailAuthProvider } from "firebase/auth";
 import { FirebaseRecaptchaVerifierModal } from "expo-firebase-recaptcha";
 import { auth } from "../../firebase"; // your firebase auth instance
 
@@ -35,7 +35,7 @@ const confirmFirebaseCode = async (
 };
 
 export default function CompleteProfile() {
-  const { userDocId } = useLocalSearchParams();
+  const { newUserDocId } = useLocalSearchParams();
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState(""); // Add password state
@@ -49,21 +49,39 @@ export default function CompleteProfile() {
 
   const handleSave = async () => {
     if (!email || !phone || !password) {
-      // Validate password
       setMessage("Please fill all fields.");
       return;
     }
     try {
-      const userRef = doc(db, "users", userDocId as string);
-      await updateDoc(userRef, {
+      // Link email/password to the current user (phone-authenticated)
+      const credential = EmailAuthProvider.credential(email, password);
+      await linkWithCredential(auth.currentUser, credential);
+
+      // Get user data from new_users
+      const newUserRef = doc(db, "new_users", newUserDocId as string);
+      const newUserSnap = await getDoc(newUserRef);
+      if (!newUserSnap.exists()) {
+        setMessage("User data not found.");
+        return;
+      }
+      const newUserData = newUserSnap.data();
+
+      // Create new user doc in users collection with Auth UID as doc ID
+      const userRef = doc(db, "users", auth.currentUser.uid);
+      await setDoc(userRef, {
+        firstName: newUserData.firstName,
+        lastName: newUserData.lastName,
+        id: newUserData.id,
         email,
         phone,
         password,
-        isAdmin: false, // Set isAdmin to false
-      }); // Save password
+        isAdmin: false,
+      });
+
+      // Optionally delete from new_users
+      await deleteDoc(newUserRef);
+
       setMessage("Profile updated!");
-      // Optionally, navigate to home or login
-      // router.replace("/login");
     } catch (err: any) {
       setMessage("Failed to update profile.");
     }
@@ -194,7 +212,7 @@ export default function CompleteProfile() {
         />
       </View>
     </TouchableWithoutFeedback>
-);
+  );
 }
 
 const styles = StyleSheet.create({

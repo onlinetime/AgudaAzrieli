@@ -38,12 +38,20 @@ export default function UploadUsersFile() {
           "application/vnd.ms-excel",
         ],
       });
-      if (result.type === "cancel") {
+      if (result.canceled) {
         setLoading(false);
         return;
       }
 
-      const { uri, name } = result;
+      // result.assets is an array; get the first file
+      const file = result.assets?.[0];
+      if (!file) {
+        setLoading(false);
+        Alert.alert(t("error"), t("noFileSelected"));
+        return;
+      }
+
+      const { uri, name } = file;
       let users: any[] = [];
 
       /* ─── CSV ─── */
@@ -87,12 +95,12 @@ export default function UploadUsersFile() {
       if (!u["שם פרטי"] || !u["שם משפחה"] || !u["תעודת זהות"]) continue;
 
       const q = query(
-        collection(db, "users"),
+        collection(db, "new_users"), // <-- changed from "users"
         where("id", "==", String(u["תעודת זהות"]))
       );
       const snap = await getDocs(q);
       if (snap.empty) {
-        await addDoc(collection(db, "users"), {
+        await addDoc(collection(db, "new_users"), { // <-- changed from "users"
           firstName: u["שם פרטי"],
           lastName:  u["שם משפחה"],
           id:        String(u["תעודת זהות"]),

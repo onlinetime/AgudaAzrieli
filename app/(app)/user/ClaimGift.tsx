@@ -58,7 +58,7 @@ export default function GiftClaimScreen() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const userRef = doc(db, "users", user.email!);
+      const userRef = doc(db, "users", user.uid); // <-- use user.uid
       const uSnap   = await getDoc(userRef);
       if (uSnap.exists()) {
         const data = uSnap.data();
@@ -76,7 +76,7 @@ export default function GiftClaimScreen() {
     if (!user) return;
     setLoading(true);
     const code = generateCode();
-    const userRef = doc(db, "users", user.email!);
+    const userRef = doc(db, "users", user.uid); // <-- use user.uid
     await setDoc(
       userRef,
       { hasClaimedGift2025: true, claimedGiftAt: serverTimestamp(), claimCode: code },

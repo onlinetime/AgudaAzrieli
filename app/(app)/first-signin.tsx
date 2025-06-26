@@ -26,7 +26,7 @@ export default function FirstSignIn() {
     }
 
     try {
-      const usersRef = collection(db, "users");
+      const usersRef = collection(db, "new_users"); // <-- changed from "users"
       const q = query(usersRef, where("id", "==", trimmedId));
       const querySnapshot = await getDocs(q);
 
@@ -34,17 +34,11 @@ export default function FirstSignIn() {
         const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data();
 
-        // Check if phone and email are already filled
-        if (userData.phone && userData.email) {
-          setMessage("User already exists.");
-          return;
-        }
-
         setMessage("User ID found! Proceeding...");
-        // Navigate to complete-profile and pass userDoc.id
+        // Pass new_users doc id and userData to complete-profile
         router.replace({
           pathname: "./complete-profile",
-          params: { userDocId: userDoc.id },
+          params: { newUserDocId: userDoc.id },
         });
       } else {
         setMessage("User ID not found. Please check your ID.");

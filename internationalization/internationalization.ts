@@ -31,6 +31,10 @@ const resources = {
       forums: "פורומים",
       storesList: "רשימת חנויות",
       sendFeedback: "שליחת פידבק",
+       homeOfStudents: "דף הבית של הסטודנטים",
+       relevantNotices: "הודעות רלוונטיות",
+       notice1: "כותרת הודעה 1",
+       notice2: "כותרת הודעה 2",
 
       /* ─ Feedback UI ─ */
       weValueFeedback: "אנחנו מעריכים את דעתך",
@@ -196,6 +200,8 @@ const resources = {
       storeAddedSuccess: "החנות נוספה בהצלחה!",
       failedAddStore: "נכשל בהוספת חנות. נסה שוב.",
 
+       menu: "תפריט",
+
       /* ──── List Stores ──── */
       listStoresTitle: "רשימת חנויות",
       cannotLoadStores: "לא ניתן לטעון את החנויות",
@@ -219,6 +225,7 @@ const resources = {
       "אחר": "אחר",
       "פעיל": "פעיל",
       "לא פעיל": "לא פעיל",
+      
 
       /* local keys */
       "ימית 2000": "ימית 2000",
@@ -231,6 +238,7 @@ const resources = {
       "מסיבת סטודנטים": "מסיבת סטודנטים",
       "תיק": "תיק",
       "מתנות תחילת שנה": "מתנות תחילת שנה"
+      
     }
   },
 
@@ -261,6 +269,10 @@ const resources = {
       forums: "Forums",
       storesList: "Stores List",
       sendFeedback: "Send Feedback",
+       homeOfStudents: "Students Home",
+       relevantNotices: "Relevant Notices",
+       notice1: "Notice title 1",
+       notice2: "Notice title 2",
 
       /* ─ Feedback UI ─ */
       weValueFeedback: "We Value Your Feedback",
@@ -426,6 +438,9 @@ const resources = {
       discountRequired: "Please enter the discount.",
       storeAddedSuccess: "Store added successfully!",
       failedAddStore: "Failed to add store. Please try again.",
+
+       /* ─ Drawer / Menu ─ */
+       menu: "Menu",
 
       /* ──── List Stores ──── */
       listStoresTitle: "List of Stores",

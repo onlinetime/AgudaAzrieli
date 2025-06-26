@@ -49,3 +49,4 @@ export const HE_EN: Record<string, string> = {
 ----------------------------------------------------------------- */
 export const tr = (txt: string, lang: string) =>
   lang === "en" ? HE_EN[txt] ?? txt : txt;
+export default () => null;
