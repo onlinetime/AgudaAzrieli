@@ -1,9 +1,7 @@
-// libs/utils/translate.ts
-import i18n from "../../internationalization/internationalization";
-
-/**
- * מילון תרגום עברית → אנגלית
- */
+// app/utils/translate.ts
+/* ----------------------------------------------------------------
+   מילון עברית → אנגלית  (אפשר להרחיב חופשי בהמשך)
+----------------------------------------------------------------- */
 export const HE_EN: Record<string, string> = {
   /* 🖥️ - UI כלליות */
   storesList: "Stores List",
@@ -12,10 +10,6 @@ export const HE_EN: Record<string, string> = {
   noStores: "No stores found",
   addToCalendar: "Add to Calendar",
   noUpcomingEvents: "No upcoming events",
-  "איסוף מתנה": "Gift Collection",
-
-
-  
 
   /* 🛑 - הודעות ו-Alert-ים */
   "אין הרשאה": "No permission",
@@ -41,24 +35,18 @@ export const HE_EN: Record<string, string> = {
     "Dear students – new collab with Burgers Bar!!",
   "הנחה שווה ומפנקת לסטודנטים": "Great student discount",
 
-  /* 🎉 - אירועים לדוגמה */
+  /* 🎉 - אירועים לדוגמה (אפשר להוסיף) */
   "מסיבת סטודנטים": "Student Party",
   "ישראל ישראלה": "Israel Israelah",
   "ממש פה": "Right here",
   "אוניברסיטת אריאל": "Ariel University",
-
-  /* ✨ - מפתחות חדשים שהוספנו */
-  "אימות קבלת מתנה": "Verify Gift Receipt",
-  "חפש": "Search",
-  "סרוק QR": "Scan QR",
-  "קוד איסוף": "Claim Code",
 };
 
-/**
- * פונקצית תרגום:
- * אם השפה הנוכחית היא אנגלית – תחזיר תרגום מהמילון (או את המקורי אם לא נמצא),
- * אחרת תחזיר את הטקסט המקורי.
- */
-export function tr(txt: string): string {
-  return i18n.language === "en" ? HE_EN[txt] ?? txt : txt;
-}
+/* ----------------------------------------------------------------
+   פונקציית תרגום קצרה
+   - אם השפה אנגלית ובמילון – מחזירה תרגום,
+   - אחרת מחזירה את הטקסט המקורי.
+----------------------------------------------------------------- */
+export const tr = (txt: string, lang: string) =>
+  lang === "en" ? HE_EN[txt] ?? txt : txt;
+export default () => null;
