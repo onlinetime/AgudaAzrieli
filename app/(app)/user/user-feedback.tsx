@@ -21,27 +21,24 @@ import {
   serverTimestamp,
   query,
   where,
-  orderBy,
-  limit,
   getDocs,
   getDoc,
   doc,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../../../firebase";
 import { useSettings } from "../../../contexts/SettingsContext";
-
-import { useTranslation } from "react-i18next";   /* ← חדש */
+import { useTranslation } from "react-i18next";
 
 const ACCENT = "#ff1744";
-const BG_LIGHT = "#fff";
 
 export default function UserFeedback() {
   const insets = useSafeAreaInsets();
   const { darkMode } = useSettings();
-  const { t, i18n } = useTranslation();          /* ← חדש */
-  const lang = i18n.language;                    /* ← חדש */
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language.startsWith("he");
 
-  const SURFACE_BG = darkMode ? "#121212" : BG_LIGHT;
+  const SURFACE_BG = darkMode ? "#121212" : "#fff";
   const TEXT_PRIMARY = darkMode ? "#E0E0E0" : "#121212";
   const TEXT_SECONDARY = darkMode ? "#C0C0C0" : "#333";
 
@@ -55,35 +52,38 @@ export default function UserFeedback() {
 
   const handleSubmit = useCallback(async () => {
     if (!content.trim()) {
-      Alert.alert(t("enterFeedback", "אנא הזן משוב"));
+      Alert.alert(
+        t("error", "שגיאה"),
+        t("enterFeedback", "אנא הזן משוב")
+      );
       return;
     }
     setSending(true);
     try {
-      const userId = "USER_ID_HERE";
-      const lastQ = query(
+      const userId = "USER_ID_HERE"; // TODO: החליפו ב־UID אמיתי
+      // בודקים אם נשלח משוב בשבוע האחרון
+      const oneWeekAgo = Timestamp.fromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const weeklyQ = query(
         collection(db, "feedback"),
         where("userId", "==", userId),
-        orderBy("createdAt", "desc"),
-        limit(1),
+        where("createdAt", ">=", oneWeekAgo)
       );
-      const lastSnap = await getDocs(lastQ);
-      if (!lastSnap.empty) {
-        const lastAt = lastSnap.docs[0].data().createdAt?.toDate();
-        if (lastAt) {
-          const days = (Date.now() - lastAt.getTime()) / (1000 * 60 * 60 * 24);
-          if (days < 7) {
-            Alert.alert(t("feedbackLimitWeekly", "ניתן לשלוח משוב רק פעם בשבוע"));
-            setSending(false);
-            return;
-          }
-        }
+      const weeklySnap = await getDocs(weeklyQ);
+      if (!weeklySnap.empty) {
+        Alert.alert(
+          t("feedbackLimitWeekly", "ניתן לשלוח משוב רק פעם בשבוע")
+        );
+        setSending(false);
+        return;
       }
+      // לשמור את המשוב
       let userName = "Anonymous";
       const userDoc = await getDoc(doc(db, "users", userId));
       if (userDoc.exists()) {
         const d = userDoc.data() as any;
-        if (d.firstName || d.lastName) userName = `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim();
+        if (d.firstName || d.lastName) {
+          userName = `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim();
+        }
       }
       await addDoc(collection(db, "feedback"), {
         content,
@@ -93,10 +93,16 @@ export default function UserFeedback() {
         createdAt: serverTimestamp(),
       });
       setContent("");
-      Alert.alert(t("thankYou", "תודה!"), t("feedbackSent", "המשוב הוגש בהצלחה."));
+      Alert.alert(
+        t("thankYou", "תודה!"),
+        t("feedbackSent", "המשוב הוגש בהצלחה.")
+      );
     } catch (e) {
       console.error(e);
-      Alert.alert(t("error", "שגיאה"), t("feedbackFailed", "לא ניתן לשלוח משוב"));
+      Alert.alert(
+        t("error", "שגיאה"),
+        t("feedbackFailed", "לא ניתן לשלוח משוב")
+      );
     } finally {
       setSending(false);
     }
@@ -104,8 +110,8 @@ export default function UserFeedback() {
 
   return (
     <SafeAreaView
+      edges={["top", "bottom", "left", "right"]}
       style={[styles.flex, { backgroundColor: SURFACE_BG }]}
-      edges={["bottom", "left", "right"]}
     >
       {/* HEADER */}
       <LinearGradient
@@ -117,26 +123,42 @@ export default function UserFeedback() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color="#fff" />
         </Pressable>
-        <Text style={styles.headerTitle}>{t("sendFeedback", "Send Feedback")}</Text>
+        <Text style={styles.headerTitle}>
+          {t("sendFeedback", "שלח משוב")}
+        </Text>
         <View style={{ width: 24 }} />
       </LinearGradient>
 
       {/* FORM */}
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={[styles.container, { paddingTop: 16 }]}>
-          <Text style={[styles.title, { color: ACCENT }]}>
-            {t("weValueFeedback", "We Value Your Feedback")}
+          <Text
+            style={[
+              styles.title,
+              { color: ACCENT, textAlign: isRTL ? "right" : "left" },
+            ]}
+          >
+            {t("weValueFeedback", "אנו מעריכים את המשוב שלך")}
           </Text>
-          <Text style={[styles.subtitle, { color: TEXT_SECONDARY }]}>
-            {t("letUsKnow", "Let us know your thoughts or suggestions.")}
+          <Text
+            style={[
+              styles.subtitle,
+              { color: TEXT_SECONDARY, textAlign: isRTL ? "right" : "left" },
+            ]}
+          >
+            {t("letUsKnow", "השאר לנו את המחשבות או ההצעות שלך.")}
           </Text>
 
           <TextInput
             style={[
               styles.input,
-              { borderColor: sending ? "#ccc" : ACCENT, color: TEXT_PRIMARY },
+              {
+                borderColor: sending ? "#ccc" : ACCENT,
+                color: TEXT_PRIMARY,
+                textAlign: isRTL ? "right" : "left",
+              },
             ]}
-            placeholder={t("feedbackPlaceholder", "Type your feedback here...")}
+            placeholder={t("feedbackPlaceholder", "הקלד את המשוב שלך כאן…")}
             placeholderTextColor="#888"
             value={content}
             onChangeText={setContent}
@@ -155,7 +177,9 @@ export default function UserFeedback() {
               {sending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.buttonText}>{t("sendFeedbackButton", "שלח משוב")}</Text>
+                <Text style={styles.buttonText}>
+                  {t("sendFeedbackButton", "שלח משוב")}
+                </Text>
               )}
             </Pressable>
           </Animated.View>
@@ -175,10 +199,23 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
   backBtn: { padding: 4 },
-  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
+  headerTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
+    flex: 1,
+    textAlign: "center",
+  },
   container: { flex: 1, paddingHorizontal: 24 },
-  title: { fontSize: 26, fontWeight: "700", marginBottom: 8, textAlign: "center" },
-  subtitle: { fontSize: 16, marginBottom: 24, textAlign: "center" },
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    marginBottom: 24,
+  },
   input: {
     flexGrow: 1,
     minHeight: 120,
@@ -199,5 +236,4 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { backgroundColor: "#ccc" },
   buttonText: { color: "#fff", fontSize: 18, fontWeight: "600" },
-  error: { fontSize: 18, textAlign: "center", marginVertical: 12 },
 });

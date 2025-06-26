@@ -6,11 +6,11 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
-  SafeAreaView,
   StyleSheet,
   Alert,
 } from "react-native";
-import { Camera, CameraView } from "expo-camera";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { CameraView } from "expo-camera";
 import {
   getFirestore,
   collection,
@@ -24,34 +24,40 @@ import {
 import { getAuth } from "firebase/auth";
 import { useTheme } from "@react-navigation/native";
 import { useTranslation } from "react-i18next";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
 const db = getFirestore();
+const ACCENT = "#ff1744";
+const HEADER_GRAD: [string, string] = [ACCENT, "#d32f2f"];
 
 export default function GiftVerify() {
-  const { colors } = useTheme();
-  const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { colors, dark } = useTheme();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language.startsWith("he");
 
-  const [inputCode, setInputCode]   = useState("");
-  const [userDoc, setUserDoc]       = useState<any>(null);
-  const [loading, setLoading]       = useState(false);
-  const [error, setError]           = useState("");
-  const [verified, setVerified]     = useState(false);
+  const [inputCode, setInputCode] = useState("");
+  const [userDoc, setUserDoc] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [verified, setVerified] = useState(false);
   const [alreadyVerified, setAlreadyVerified] = useState(false);
-  const [scannerVisible, setScannerVisible]   = useState(false);
-  const [hasPermission, setHasPermission]     = useState<boolean | null>(null);
-  const [scanned, setScanned]       = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
 
   const admin = getAuth().currentUser;
 
-  /* ── Camera permission ── */
   useEffect(() => {
     (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
+      const { status } = await CameraView.requestCameraPermissionsAsync();
       setHasPermission(status === "granted");
     })();
   }, []);
 
-  /* ── Handle QR ── */
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     setScanned(true);
     setScannerVisible(false);
@@ -59,26 +65,26 @@ export default function GiftVerify() {
     searchUser(data);
   };
 
-  /* ── Search Firestore by claimCode ── */
   const searchUser = async (codeParam?: string) => {
-    const code = codeParam || inputCode.trim();
+    const code = (codeParam ?? inputCode).trim();
     if (!code) return;
-
     setLoading(true);
     setError(""); setUserDoc(null);
     setVerified(false); setAlreadyVerified(false);
 
     try {
+      // מוצא את המשתמש
       const q = query(collection(db, "users"), where("claimCode", "==", code));
       const snap = await getDocs(q);
       if (snap.empty) {
         setError(t("giftCodeNotFound"));
         return;
       }
-      const user = { ...(snap.docs[0].data() as any), id: snap.docs[0].id };
+      const docSnap = snap.docs[0];
+      const user = { ...(docSnap.data() as any), id: docSnap.id };
       setUserDoc(user);
 
-      /* בדיקה אם כבר סומן */
+      // בודק אם כבר סומן
       const vQ = query(
         collection(db, "giftVerifications"),
         where("claimCode", "==", user.claimCode)
@@ -96,7 +102,6 @@ export default function GiftVerify() {
     }
   };
 
-  /* ── Mark as delivered ── */
   const verifyGift = async () => {
     if (!userDoc || !admin) return;
     setLoading(true);
@@ -111,110 +116,194 @@ export default function GiftVerify() {
     } catch (e) {
       console.error(e);
       Alert.alert(t("error"), t("somethingWentWrong"));
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  /* ── UI ── */
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <View style={styles.container}>
-        <Text style={[styles.title, { color: colors.text }]}>
+    <SafeAreaView
+      edges={["top","bottom","left","right"]}
+      style={[styles.safe, { backgroundColor: colors.background }]}
+    >
+      {/* HEADER */}
+      <LinearGradient
+        colors={HEADER_GRAD}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[
+          styles.header,
+          { paddingTop: insets.top + 8, flexDirection: "row" /* תמיד row */ }
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => router.canGoBack() ? router.back() : router.push("..")}
+          style={styles.backBtn}
+        >
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text
+          style={[
+            styles.headerTitle,
+            { textAlign: isRTL ? "right" : "left", flex: 1 }
+          ]}
+        >
           {t("giftVerifyTitle")}
         </Text>
+        <View style={{ width: 24 }} />
+      </LinearGradient>
 
-        {/* קלט קוד */}
-        <Text style={[styles.label, { color: colors.text }]}>
+      <View style={[styles.container, { paddingBottom: insets.bottom }]}>
+        {/* קוד ידני */}
+        <Text
+          style={[
+            styles.label,
+            { color: colors.text, textAlign: isRTL ? "right" : "left" }
+          ]}
+        >
           {t("giftEnterCodeLabel")}
         </Text>
-        <TextInput
+        <View
           style={[
-            styles.input,
-            { backgroundColor: colors.card, borderColor: colors.border, color: colors.text },
+            styles.inputWrapper,
+            { flexDirection: isRTL ? "row-reverse" : "row" }
           ]}
-          placeholder={t("giftEnterCodePH")}
-          placeholderTextColor={colors.border}
-          value={inputCode}
-          onChangeText={setInputCode}
-          onSubmitEditing={() => searchUser()}
-        />
+        >
+          <Ionicons
+            name="code-outline"
+            size={20}
+            color={ACCENT}
+            style={[styles.inputIcon, isRTL && { marginLeft: 8, marginRight: 0 }]}
+          />
+          <TextInput
+            style={[
+              styles.input,
+              {
+                borderColor: ACCENT,
+                color: colors.text,
+                textAlign: isRTL ? "right" : "left"
+              }
+            ]}
+            placeholder={t("giftEnterCodePH")}
+            placeholderTextColor="#aaa"
+            value={inputCode}
+            onChangeText={setInputCode}
+            onSubmitEditing={() => searchUser()}
+          />
+        </View>
 
-        {/* כפתורים */}
+        {/* כפתורי חיפוש וסריקה */}
         <View style={styles.buttonRow}>
           <TouchableOpacity
-            style={[styles.button, { backgroundColor: colors.primary }]}
+            style={[styles.button, { backgroundColor: ACCENT }]}
             onPress={() => searchUser()}
+            disabled={loading}
           >
-            <Text style={styles.buttonText}>{t("search")}</Text>
+            {loading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.buttonText}>{t("search")}</Text>
+            }
           </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.button, styles.qrButton]}
             onPress={() => { setScannerVisible(true); setScanned(false); }}
           >
+            <Ionicons name="qr-code-outline" size={20} color="#fff" />
             <Text style={styles.buttonText}>{t("scanQR")}</Text>
           </TouchableOpacity>
         </View>
 
-        {/* סריקה */}
+        {/* מודל סורק */}
         <Modal visible={scannerVisible} animationType="slide">
-          <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-            {hasPermission ? (
-              <CameraView
-                style={{ flex: 1 }}
-                barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-                onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-              />
-            ) : (
-              <Text style={{ textAlign: "center", marginTop: 40, color: colors.text }}>
-                {t("noCameraPerm")}
-              </Text>
-            )}
-
+          <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+            {hasPermission
+              ? (
+                <CameraView
+                  style={styles.camera}
+                  onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+                  barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
+                />
+              ) : (
+                <Text
+                  style={[
+                    styles.noPerm,
+                    { color: colors.text, textAlign: isRTL ? "right" : "center" }
+                  ]}
+                >
+                  {t("noCameraPerm")}
+                </Text>
+              )
+            }
             <TouchableOpacity
-              style={[styles.button, { margin: 24, backgroundColor: colors.card }]}
+              style={[styles.closeBtn, { backgroundColor: colors.card }]}
               onPress={() => setScannerVisible(false)}
             >
-              <Text style={[styles.buttonText, { color: colors.text }]}>
-                {t("close")}
-              </Text>
+              <Ionicons name="close-circle" size={24} color={colors.text} />
             </TouchableOpacity>
           </SafeAreaView>
         </Modal>
 
-        {loading && (
-          <ActivityIndicator size="large" color={colors.primary} style={{ margin: 16 }} />
-        )}
-
+        {/* שגיאה */}
         {error ? (
-          <Text style={[styles.error, { color: colors.notification }]}>{error}</Text>
+          <Text
+            style={[
+              styles.error,
+              { color: colors.notification, textAlign: isRTL ? "right" : "center" }
+            ]}
+          >
+            {error}
+          </Text>
         ) : null}
 
-        {/* פרטי משתמש */}
+        {/* פרטי משתמש וסימון */}
         {userDoc && (
           <View style={[styles.card, { backgroundColor: colors.card }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { color: colors.text, textAlign: "center" }
+              ]}
+            >
               {t("userDetails")}
             </Text>
-            <Text style={[styles.cardText, { color: colors.text }]}>
-              {t("idLabel")}: {userDoc.id}
+            <Text
+              style={[
+                styles.cardText,
+                { color: colors.text, textAlign: isRTL ? "right" : "left" }
+              ]}
+            >
+              ID: {userDoc.id}
             </Text>
-            <Text style={[styles.cardText, { color: colors.text }]}>
-              {t("codeLabel")}: {userDoc.claimCode}
+            <Text
+              style={[
+                styles.cardText,
+                { color: colors.text, textAlign: isRTL ? "right" : "left" }
+              ]}
+            >
+              {t("giftCode")}: {userDoc.claimCode}
             </Text>
 
-            {verified ? (
-              <Text style={[styles.verified, { color: colors.success }]}>
-                {alreadyVerified ? t("giftAlreadyMarked") : t("giftMarked")}
-              </Text>
-            ) : (
-              <TouchableOpacity
-                style={[styles.button, { backgroundColor: colors.success }]}
-                onPress={verifyGift}
-              >
-                <Text style={styles.buttonText}>{t("markDelivered")}</Text>
-              </TouchableOpacity>
-            )}
+            {verified
+              ? (
+                <Text
+                  style={[
+                    styles.verified,
+                    { color: ACCENT, textAlign: "center" }
+                  ]}
+                >
+                  {alreadyVerified
+                    ? t("giftAlreadyMarked")
+                    : t("giftMarked")}
+                </Text>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.button, { backgroundColor: ACCENT, alignSelf: "center" }]}
+                  onPress={verifyGift}
+                >
+                  <Text style={styles.buttonText}>{t("markDelivered")}</Text>
+                </TouchableOpacity>
+              )
+            }
           </View>
         )}
       </View>
@@ -222,20 +311,72 @@ export default function GiftVerify() {
   );
 }
 
-/* ───────── Styles ───────── */
 const styles = StyleSheet.create({
-  safe:      { flex: 1 },
-  container: { flex: 1, padding: 24 },
-  title:     { fontSize: 26, fontWeight: "bold", marginBottom: 18, textAlign: "center" },
-  label:     { fontSize: 16, marginVertical: 8, textAlign: "right" },
-  input:     { borderWidth: 1, borderRadius: 10, padding: 12, fontSize: 18, marginBottom: 16, textAlign: "right" },
-  buttonRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
-  button:    { flex: 1, paddingVertical: 12, borderRadius: 10, marginHorizontal: 6, alignItems: "center" },
-  qrButton:  { backgroundColor: "#34c759" },
-  buttonText:{ color: "#fff", fontSize: 18, fontWeight: "bold" },
-  error:     { fontSize: 16, textAlign: "center", marginVertical: 12 },
-  card:      { borderRadius: 14, padding: 18, marginTop: 24, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 8, elevation: 2 },
-  cardTitle: { fontSize: 20, fontWeight: "bold", marginBottom: 10, textAlign: "center" },
-  cardText:  { fontSize: 16, marginBottom: 6, textAlign: "right" },
-  verified:  { fontSize: 18, fontWeight: "bold", marginTop: 12, textAlign: "center" },
+  safe: { flex: 1 },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
+  backBtn: { padding: 4 },
+  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "700" },
+
+  container: { flex: 1, padding: 16 },
+
+  label: { fontSize: 16, marginBottom: 8, fontWeight: "600" },
+
+  inputWrapper: {
+    borderWidth: 2,
+    borderRadius: 8,
+    marginBottom: 16,
+    alignItems: "center",
+  },
+  inputIcon: { marginRight: 8 },
+  input: { flex: 1, height: 44, fontSize: 16, paddingHorizontal: 8 },
+
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  button: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  qrButton: { backgroundColor: ACCENT },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "bold", marginLeft: 6 },
+
+  camera: { flex: 1 },
+  noPerm: { textAlign: "center", marginTop: 40, fontSize: 16 },
+
+  closeBtn: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    padding: 8,
+  },
+
+  error: { fontSize: 16, marginVertical: 12 },
+
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  cardTitle: { fontSize: 20, fontWeight: "700", marginBottom: 8 },
+  cardText: { fontSize: 16, marginBottom: 6 },
+
+  verified: { fontSize: 18, fontWeight: "700", marginTop: 12 },
+
 });

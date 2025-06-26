@@ -1,4 +1,3 @@
-// app/(app)/admin/admin-home.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -6,39 +5,22 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  StatusBar,
+  StatusBar as RNStatusBar,
   ScrollView,
   Dimensions,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
-import { useTheme } from "@react-navigation/native";          // ★ NEW
+import { useTheme } from "@react-navigation/native";
+import { WaveHeader } from "../user/WaveHeader";
 
-const { height: SCREEN_HEIGHT } = Dimensions.get("window");
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const WAVE_HEIGHT = 120;
+const OVERLAP = 40;
 
-/** תפריט ראשי – כל הכפתורים “שטוחים” (בלי תפריטי משנה) **/
-const MAIN_MENU = [
-  // ----- מתנות
-  { key: "createGift",      to: "./uploadGift",        icon: "gift-outline" },
-  { key: "giftEligibility", to: "./GiftVerify",        icon: "checkmark-done-outline" },
-  { key: "uploadUsers",     to: "./upload-users-file", icon: "document-attach-outline" },
-
-  // ----- מערכת “ישנה”
-  { key: "feedback",        to: "/admin/feedback-list", icon: "chatbubble-outline" },
-
-  { key: "forumPost",       to: "./admin-forum",       icon: "help-circle-outline" },
-  { key: "addCard",         to: "/student-card",       icon: "cube-outline" },
-
-  // ----- גל רקע (Wave Settings)
-  { key: "waveSettings",    to: "./waveSettings",     icon: "color-palette-outline" },
-
-  // ----- הגדרות
-  { key: "settings",        to: "/settings",    icon: "settings-outline" },
-] as const;
-
-/** כפתורי־משנה למסכי אירועים / חנויות **/
 const EVENT_SUB = [
   { label: "הוסף אירוע",     to: "./add-event",   icon: "add-circle-outline" },
   { label: "אירועים פתוחים", to: "./open-events", icon: "time-outline" },
@@ -48,109 +30,116 @@ const STORE_SUB = [
   { label: "רשימת חנויות",   to: "./list-stores", icon: "list-outline" },
 ];
 
+
+const MAIN_MENU = [
+  { key: "createGift",      to: "./uploadGift",        icon: "gift-outline" },
+  { key: "giftEligibility", to: "./GiftVerify",        icon: "checkmark-done-outline" },
+  { key: "uploadUsers",     to: "./upload-users-file", icon: "document-attach-outline" },
+  { key: "feedback",        to: "/admin/feedback-list", icon: "chatbubble-outline" },
+  { key: "forumPost",       to: "./admin-forum",       icon: "help-circle-outline" },
+  { key: "addCard",         to: "/student-card",       icon: "cube-outline" },
+  { key: "waveSettings",    to: "./waveSettings",      icon: "color-palette-outline" },
+  { key: "settings",        to: "/settings",           icon: "settings-outline" },
+];
+
 export default function AdminHomeScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const { colors, dark } = useTheme();
+
+  const gradientColors: [import("react-native").ColorValue, import("react-native").ColorValue] = dark ? ["#1e1e1e", "#121212"] : ["#ffebee", "#ffcdd2"];
+  const surfaceBg     = dark ? "#121212" : "#fff";
+  const statusStyle   = dark ? "light-content" : "dark-content";
+
   const [showEvents, setShowEvents] = useState(false);
   const [showStores, setShowStores] = useState(false);
 
-  /* ---------- Theme ---------- */
-  const { colors, dark } = useTheme();
-  const mainGrad = dark ? ["#2c2c2c", "#1e1e1e"] : ["#fafbff", "#f5f7fa"];
-  const subGrad  = dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"];
-
   return (
-    <View style={[styles.flex, { backgroundColor: colors.background }]}>
-      {/* 🟦 סרגל עליון */}
-      <LinearGradient
-        colors={["#4f6cf7", "#d94645"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.headerBar}
-      >
-        <Text style={[styles.headerText]}>{t("welcomeAdmin")}</Text>
-      </LinearGradient>
+    <>
+      <RNStatusBar translucent backgroundColor="transparent" barStyle={statusStyle} />
+      <View style={styles.root}>
+        <LinearGradient colors={gradientColors} style={styles.gradient}>
+          <WaveHeader />
 
-      {/* 🔽 תפריט גלילה */}
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* כפתורי־על */}
-        {MAIN_MENU.map(({ key, to, icon }) => (
-          <CardButton
-            key={key}
-            label={t(key)}
-            icon={icon}
-            to={to}
-            mainGrad={mainGrad}          /* ← theme */
-            subGrad={subGrad}
-            textColor={colors.text}
-            dark={dark}
-          />
-        ))}
+          <View
+            style={[
+              styles.content,
+              { marginTop: WAVE_HEIGHT - OVERLAP + insets.top, backgroundColor: surfaceBg },
+            ]}
+          >
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>{t("welcomeAdmin")}</Text>
+            </View>
 
-        {/* --- ניהול אירועים --- */}
-        <CardButton
-          label={t("eventManagement")}
-          icon="calendar-outline"
-          isToggle
-          toggled={showEvents}
-          onPress={() => setShowEvents((p) => !p)}
-          mainGrad={mainGrad}
-          subGrad={subGrad}
-          textColor={colors.text}
-          dark={dark}
-        />
-        {showEvents && (
-          <View style={styles.subMenu}>
-            {EVENT_SUB.map((b) => (
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+              {MAIN_MENU.map(({ key, to, icon }) => (
+                <CardButton
+                  key={key}
+                  label={t(key)}
+                  icon={icon}
+                  to={to}
+                  mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+                  subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
+                  textColor={colors.text}
+                  dark={dark}
+                />
+              ))}
+
               <CardButton
-                key={b.to}
-                {...b}
-                isSub
-                mainGrad={mainGrad}
-                subGrad={subGrad}
+                label={t("eventManagement")}
+                icon="calendar-outline"
+                isToggle
+                toggled={showEvents}
+                onPress={() => setShowEvents((p) => !p)}
+                mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+                subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
                 textColor={colors.text}
                 dark={dark}
               />
-            ))}
-          </View>
-        )}
+              {showEvents &&
+                EVENT_SUB.map((b) => (
+                  <CardButton
+                    key={b.to}
+                    {...b}
+                    isSub
+                    mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+                    subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
+                    textColor={colors.text}
+                    dark={dark}
+                  />
+                ))}
 
-        {/* --- ניהול חנויות --- */}
-        <CardButton
-          label={t("storeManagement")}
-          icon="storefront-outline"
-          isToggle
-          toggled={showStores}
-          onPress={() => setShowStores((p) => !p)}
-          mainGrad={mainGrad}
-          subGrad={subGrad}
-          textColor={colors.text}
-          dark={dark}
-        />
-        {showStores && (
-          <View style={styles.subMenu}>
-            {STORE_SUB.map((b) => (
               <CardButton
-                key={b.to}
-                {...b}
-                isSub
-                mainGrad={mainGrad}
-                subGrad={subGrad}
+                label={t("storeManagement")}
+                icon="storefront-outline"
+                isToggle
+                toggled={showStores}
+                onPress={() => setShowStores((p) => !p)}
+                mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+                subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
                 textColor={colors.text}
                 dark={dark}
               />
-            ))}
+              {showStores &&
+                STORE_SUB.map((b) => (
+                  <CardButton
+                    key={b.to}
+                    {...b}
+                    isSub
+                    mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+                    subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
+                    textColor={colors.text}
+                    dark={dark}
+                  />
+                ))}
+            </ScrollView>
           </View>
-        )}
-      </ScrollView>
-    </View>
+        </LinearGradient>
+      </View>
+    </>
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*           כפתור כרטיס – ראשי, תת-כפתור או Toggle-קבוצה             */
 /* ------------------------------------------------------------------ */
 type BtnProps = {
   label: string;
@@ -160,9 +149,8 @@ type BtnProps = {
   isToggle?: boolean;
   toggled?: boolean;
   onPress?: () => void;
-  /* 🆕 theme-props */
-  mainGrad: string[];
-  subGrad: string[];
+  mainGrad: import("react-native").ColorValue[];
+  subGrad: import("react-native").ColorValue[];
   textColor: string;
   dark: boolean;
 };
@@ -188,15 +176,11 @@ function CardButton({
   return (
     <Pressable
       onPress={handle}
-      style={({ pressed }) => [
-        styles.card,
-        isSub && styles.cardSub,
-        pressed && styles.cardPressed,
-      ]}
+      style={({ pressed }) => [styles.card, isSub && styles.cardSub, pressed && styles.cardPressed]}
       android_ripple={{ color: "rgba(0,0,0,0.12)" }}
     >
       <LinearGradient
-        colors={isSub ? subGrad : mainGrad}
+        colors={(isSub ? subGrad : mainGrad) as [import("react-native").ColorValue, import("react-native").ColorValue]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={[styles.cardBg, isSub && styles.cardSubBg]}
@@ -231,39 +215,22 @@ function CardButton({
 }
 
 /* ------------------------------------------------------------------ */
-/*                              Styles                                 */
-/* ------------------------------------------------------------------ */
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
+  root: { flex: 1, flexDirection: "row-reverse" },
+  gradient: { flex: 1, writingDirection: "rtl" },
+  content: { flex: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" },
 
-  /* header */
-  headerBar: {
-    paddingVertical: 28,
+  header: {
+    height: 56,
+    flexDirection: "row-reverse",
     alignItems: "center",
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    marginBottom: 16,
-    ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.1, shadowOffset: { width: 0, height: 6 }, shadowRadius: 8 },
-      android: { elevation: 6 },
-    }),
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
   },
-  headerText: {
-    color: "#fff",
-    fontSize: 28,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
+  headerTitle: { fontSize: 20, fontWeight: "700", color: "#b71c1c", textAlign: "right" },
 
-  /* scroll content */
-  scrollContent: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
-    minHeight: SCREEN_HEIGHT + 40,
-  },
+  scrollContent: { padding: 16 },
 
   /* card generic */
   card: {
@@ -277,12 +244,7 @@ const styles = StyleSheet.create({
   },
   cardPressed: { transform: [{ scale: 0.98 }], opacity: 0.9 },
 
-  cardBg: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
+  cardBg: { flexDirection: "row", alignItems: "center", paddingVertical: 20, paddingHorizontal: 16 },
   cardIcon: { marginRight: 12 },
   cardLabel: { fontSize: 20, fontWeight: "600", flex: 1 },
 
@@ -294,7 +256,4 @@ const styles = StyleSheet.create({
   /* toggle extra */
   toggledLabel: { color: "#3C7DE5" },
   toggleIcon: { marginLeft: 8 },
-
-  /* submenu wrapper */
-  subMenu: { marginBottom: 12 },
 });
