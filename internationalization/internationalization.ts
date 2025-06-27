@@ -22,15 +22,20 @@ const resources = {
       delete: "מחק",
       completed: "הושלם",
       error: "שגיאה",
+      menu: "תפריט",                    // ← חדש
 
       /* ─ Home (user) ─ */
       welcomeTitle: "ברוכים הבאים לאגודת הסטודנטים",
+      homeOfStudents: "דף הבית של הסטודנטים", // ← חדש
       studentCard: "כרטיס סטודנט",
       upcomingEvents: "אירועים קרובים",
       inbox: "הודעות",
       forums: "פורומים",
       storesList: "רשימת חנויות",
-      sendFeedback: "שליחת פידבק",
+      sendFeedback:" שליחת פידבק",
+      relevantNotices: "הודעות רלוונטיות",    // ← חדש
+      notice1: "כותרת הודעה 1",                // ← חדש
+      notice2: "כותרת הודעה 2",                // ← חדש
 
       /* ─ Feedback UI ─ */
       weValueFeedback: "אנחנו מעריכים את דעתך",
@@ -62,12 +67,39 @@ const resources = {
       commentsLabel: "תגובות",
       Comments: "תגובות",
       writeCommentPlaceholder: "כתוב תגובה...",
+      Category:  "קטגוריה",
       Publisher: "מפרסם",
-      "Publisher:": "מפרסם:",
-      Category: "קטגוריה",
-      "Category:": "קטגוריה:",
-      Unknown: "לא ידוע",
-      IdoAgai: "עידו אגאי",
+
+
+
+
+Unknown: "לא ידוע",
+IdoAgai: "עידו אגאי",
+"Write a comment…": "כתוב תגובה…",
+      /* ────────  ▼ תוספות חדשות ▼ ──────── */
+newForumTitle:              "יצירת פורום חדש",
+forumTitlePlaceholder:      "הכנס כותרת",
+descLabel:                  "תיאור (לא חובה)",
+descPlaceholder:            "הכנס תיאור",
+saveForum:                  "שמור פורום",
+errorFillTitleAndCategory:  "חובה למלא כותרת וקטגוריה",
+errorNoUser:                "אין משתמש מחובר",
+errorCannotSave:            "לא ניתן לשמור פורום",
+
+
+/* === HE – הוסף בתוך אובייקט התרגומים (translation) === */
+
+
+
+
+/* מצב/תגים */
+"Active":   "פעיל",
+"Inactive": "לא פעיל",
+
+/* lowercase backup (ליתר ביטחון) */
+/* "publisher": "מפרסם", */
+/* "category":  "קטגוריה",  // Removed duplicate key */
+
 
       /* ─ Home (admin) ─ */
       welcomeAdmin: "ברוך הבא אדמין יקר",
@@ -78,6 +110,7 @@ const resources = {
       addCard: "הוסף כרטיס סטודנט",
       eventManagement: "ניהול אירועים",
       storeManagement: "ניהול חנויות",
+      
 
       /* – NEW admin actions – */
       createGift: "יצירת מתנה",
@@ -203,6 +236,13 @@ const resources = {
       areYouSureDeleteStore: "האם אתה בטוח?",
       edit: "ערוך",
 
+
+      //upload user file
+
+            /* upload-users-file */
+      pickFile:     "בחר קובץ",
+      addedCount:   "נוספו משתמשים:",
+
       "searchStore": "חפש חנות",
       "All": "הכל",
 
@@ -222,7 +262,6 @@ const resources = {
 
       /* local keys */
       "ימית 2000": "ימית 2000",
-      "בורגרס בר לכולם": "בורגרס בר לכולם",
       "אגריפס": "אגריפס",
       "ישראל) השמן)": "ישראל) השמן)",
       "בר יוחאי": "בר יוחאי",
@@ -231,7 +270,18 @@ const resources = {
       "מסיבת סטודנטים": "מסיבת סטודנטים",
       "תיק": "תיק",
       "מתנות תחילת שנה": "מתנות תחילת שנה"
-    }
+    },
+
+    /* ▸▸▸ NEW event-related sentences (HE) ▸▸▸ */
+      "אירוע חד יומי": "אירוע חד יומי",
+      "בדיקה": "בדיקה",
+      "סדנאות בנושא הגיט": "סדנאות בנושא הגיט",
+      "קמפוס המכללה": "קמפוס המכללה",
+      "סדנאות מלאות עם פרופסורים מומחים בנושא הגיט!": "סדנאות מלאות עם פרופסורים מומחים בנושא הגיט!",
+      "שאלות תשובות וכיף אחד גדול במקום אחד!": "שאלות תשובות וכיף אחד גדול במקום אחד!",
+      /* ─ NEW: full description string (HE + EN) ─ */
+      "סדנאות מלאות עם פרופסורים מומחים בנושא הגיט!\nשאלות תשובות וכיף אחד גדול במקום אחד!":
+        "סדנאות מלאות עם פרופסורים מומחים בנושא הגיט!\nשאלות תשובות וכיף אחד גדול במקום אחד!"
   },
 
   /* ───────────────── EN ───────────────── */
@@ -252,15 +302,20 @@ const resources = {
       delete: "Delete",
       completed: "Completed",
       error: "Error",
+      menu: "Menu",                     // ← new
 
       /* ─ Home (user) ─ */
       welcomeTitle: "Welcome Student!",
+      homeOfStudents: "Students Home Page",   // ← new
       studentCard: "Student Card",
       upcomingEvents: "Upcoming Events",
       inbox: "Inbox",
       forums: "Forums",
       storesList: "Stores List",
       sendFeedback: "Send Feedback",
+      relevantNotices: "Relevant Notices",    // ← new
+      notice1: "Notice Title 1",              // ← new
+      notice2: "Notice Title 2",              // ← new
 
       /* ─ Feedback UI ─ */
       weValueFeedback: "We Value Your Feedback",
@@ -292,12 +347,37 @@ const resources = {
       commentsLabel: "Comments",
       Comments: "Comments",
       writeCommentPlaceholder: "Write a comment…",
+      Category:  "Category",
       Publisher: "Publisher",
-      "Publisher:": "Publisher:",
-      Category: "Category",
-      "Category:": "Category:",
+
+      
+      
+
       Unknown: "Unknown",
       IdoAgai: "Ido Agai",
+      
+
+      /* ────────  ▼ new additions ▼ ──────── */
+newForumTitle:              "Create New Forum",
+forumTitlePlaceholder:      "Enter title",
+descLabel:                  "Description (optional)",
+descPlaceholder:            "Enter description",
+saveForum:                  "Save Forum",
+errorFillTitleAndCategory:  "Title and category are required",
+errorNoUser:                "No logged-in user",
+errorCannotSave:            "Cannot save forum",
+
+"Write a comment…": "Write a comment…",
+
+/* status badges */
+"Active":   "Active",
+"Inactive": "Inactive",
+
+
+
+
+
+
 
       /* ─ Home (admin) ─ */
       welcomeAdmin: "Welcome Admin!",
@@ -434,6 +514,15 @@ const resources = {
       areYouSureDeleteStore: "Are you sure?",
       edit: "Edit",
 
+
+
+      //upload user file
+
+      
+          /* upload-users-file */
+      pickFile:     "Pick File",
+      addedCount:   "Users added:",
+
       /* Categories & status */
       "פנאי": "Leisure",
       "אוכל": "Food",
@@ -454,14 +543,37 @@ const resources = {
       "searchStore": "Find a store",
       "ימית 2000": "Yamit 2000",
       "בורגרס בר לכולם": "Burgers Bar for Everyone",
-      "אגריפס": "Agripas",
+      "אגריפס":    "Agripas",
       "ישראל) השמן)": "(Israel) The Fat",
-      "בר יוחאי": "Bar Yochai",
+      "ישראל)\u00A0השמן)": "(Israel) The Fat",
+      "בר יוחאי":   "Bar Yochai",
       "סדנה מעניינת": "Interesting Workshop",
       "בנושא הורדת לחץ ותפקוד יעיל": "On stress reduction and efficient functioning",
       "מסיבת סטודנטים": "Student Party",
       "תיק": "Bag",
       "מתנות תחילת שנה": "New Year's gifts",
+      
+  /* ––– new / missing ––– */
+    "סטודנטים יקרים עשינו שת\"פ חדש עם החנות ברוגרסבר ממליצים!!":
+    "Dear students, we’ve made a new collaboration with Burgers Bar – recommended!!",
+  "הנחה שווה ומפנקת לסטודנטים":
+    "A valuable & pampering discount for students",
+
+
+       /* ▸▸▸ NEW event-related sentences (EN) ▸▸▸ */
+      "אירוע חד יומי": "One-day Event",
+      "אירוע שלושה ימים":     "Three-day Event",
+      "בדיקה": "Test",
+      "סדנאות בנושא הגיט": "Git Workshops",
+      "קמפוס המכללה": "College Campus",
+      "סדנאות מלאות עם פרופסורים מומחים בנושא הגיט!": "Comprehensive workshops with expert professors on Git!",
+      "שאלות תשובות וכיף אחד גדול במקום אחד!": "Q&A and lots of fun all in one place!",
+        /* ─ NEW: full description string (EN) ─ */
+  "סדנאות מלאות עם פרופסורים מומחים בנושא הגיט!\nשאלות תשובות וכיף אחד גדול במקום אחד!":
+    "Comprehensive workshops with expert professors on Git!\nQ&A and lots of fun all in one place!",
+
+
+      
 
       // Example descriptions (add more as needed)
       "סטודנטים יקרים, יצרנו שותפות חדשה עם החנות בברגרס בר. ממליצים!!":

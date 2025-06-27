@@ -93,14 +93,27 @@ export default function OpenEventsModern() {
           },
         ]}
       >
-        <Text
-          style={[
-            styles.title,
-            { color: colors.text, textAlign: isRTL ? "right" : "left" },
-          ]}
-        >
-          {item.title}
-        </Text>
+                {/* ⇩ NEW – תרגום כותרת האירוע */}
+        {(() => {
+          /* 1. ניקיון תווים בלתי-נראים + רווחים
+             2. העברה ל-t() כדי לקבל EN/HE בהתאם */
+          const cleanTitle = (item.title ?? "")
+            .trim()
+            .replace(/[\u200F\u200E]/g, "")   // RLM / LRM
+            .replace(/\u00A0/g, " ")          // NBSP → space
+            .replace(/\s+/g, " ");            // collapse spaces
+
+          return (
+            <Text
+              style={[
+                styles.title,
+                { color: colors.text, textAlign: isRTL ? "right" : "left" },
+              ]}
+            >
+              {t(cleanTitle, cleanTitle)}
+            </Text>
+          );
+        })()}
         <Text
           style={[
             styles.subtitle,

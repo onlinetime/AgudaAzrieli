@@ -21,15 +21,15 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const WAVE_HEIGHT = 120;
 const OVERLAP = 40;
 
+// משתמשים במפתחות שכבר קיימים ב-i18n
 const EVENT_SUB = [
-  { label: "הוסף אירוע",     to: "./add-event",   icon: "add-circle-outline" },
-  { label: "אירועים פתוחים", to: "./open-events", icon: "time-outline" },
+  { key: "addEventSubmit",  to: "./add-event",   icon: "add-circle-outline" },
+  { key: "openEventsTitle", to: "./open-events", icon: "time-outline" },
 ];
 const STORE_SUB = [
-  { label: "הוסף חנות",      to: "./add-store",   icon: "add-circle-outline" },
-  { label: "רשימת חנויות",   to: "./list-stores", icon: "list-outline" },
+  { key: "addStoreSubmit",  to: "./add-store",   icon: "add-circle-outline" },
+  { key: "listStoresTitle", to: "./list-stores", icon: "list-outline" },
 ];
-
 
 const MAIN_MENU = [
   { key: "createGift",      to: "./uploadGift",        icon: "gift-outline" },
@@ -97,17 +97,18 @@ export default function AdminHomeScreen() {
                 dark={dark}
               />
               {showEvents &&
-                EVENT_SUB.map((b) => (
-                  <CardButton
-                    key={b.to}
-                    {...b}
-                    isSub
-                    mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
-                    subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
-                    textColor={colors.text}
-                    dark={dark}
-                  />
-                ))}
+  EVENT_SUB.map(({ key, ...rest }) => (
+    <CardButton
+      key={rest.to}
+      label={t(key)}
+      {...rest}
+      isSub
+      mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+      subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
+      textColor={colors.text}
+      dark={dark}
+    />
+  ))}
 
               <CardButton
                 label={t("storeManagement")}
@@ -121,17 +122,18 @@ export default function AdminHomeScreen() {
                 dark={dark}
               />
               {showStores &&
-                STORE_SUB.map((b) => (
-                  <CardButton
-                    key={b.to}
-                    {...b}
-                    isSub
-                    mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
-                    subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
-                    textColor={colors.text}
-                    dark={dark}
-                  />
-                ))}
+  STORE_SUB.map(({ key, ...rest }) => (
+    <CardButton
+      key={rest.to}
+      label={t(key)}
+      {...rest}
+      isSub
+      mainGrad={dark ? ["#1e1e1e", "#121212"] : ["#4f6cf7", "#d94645"]}
+      subGrad={dark ? ["#373737", "#2a2a2a"] : ["#f0f0f0", "#e8e8e8"]}
+      textColor={colors.text}
+      dark={dark}
+    />
+  ))}
             </ScrollView>
           </View>
         </LinearGradient>

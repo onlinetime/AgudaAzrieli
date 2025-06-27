@@ -15,7 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, Timestamp } from "firebase/firestore";
 import { db } from "../../../firebase";
 import * as Calendar from "expo-calendar";
 import { useTranslation } from "react-i18next";
@@ -37,16 +37,36 @@ type RawEvent = {
   title: string;
   address?: string;
   description?: string;
-  startDate: string;
-  endDate: string;
+  startDate: any;  // יכול להיות String או Timestamp
+  endDate:   any;
   picture?: string;
 };
 type Event = RawEvent & { start: Date; end: Date };
 
-const parseDate = (str: string): Date => {
-  const [d, m] = str.split("/").map((n) => parseInt(n, 10));
-  const now = new Date();
-  return new Date(now.getFullYear(), m - 1, d);
+/* ■■■ generic parser – מתאים ל-Timestamp, ISO, DD/MM ■■■ */
+const parseDate = (value: any): Date => {
+  // 1. Firestore Timestamp
+  if (value && typeof value === "object" && "seconds" in value) {
+    return new Date((value as Timestamp).seconds * 1000);
+  }
+
+  // 2. ISO "YYYY-MM-DD"
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(value + "T00:00:00");
+  }
+
+  // 3. short "DD/MM"
+  if (typeof value === "string" && value.includes("/")) {
+    const parts = value.split("/").map(Number);
+    if (parts.length === 2) {
+      const [d, m] = parts;
+      const y = new Date().getFullYear();
+      return new Date(y, m - 1, d);
+    }
+  }
+
+  // 4. Fallback
+  return new Date(value);
 };
 
 export default function EventsScreen() {
@@ -61,7 +81,7 @@ export default function EventsScreen() {
   const TEXT_SECONDARY = darkMode ? "#C0C0C0" : "#555";
 
   const [rawEvents, setRawEvents] = useState<RawEvent[]>([]);
-  const [loading, setLoading]     = useState(true);
+  const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "events"), (snap) => {
@@ -75,10 +95,21 @@ export default function EventsScreen() {
   const events = useMemo<Event[]>(() => {
     const now = new Date();
     return rawEvents
-      .map((e) => ({ ...e, start: parseDate(e.startDate), end: parseDate(e.endDate) }))
+      .map((e) => ({
+        ...e,
+        start: parseDate(e.startDate),
+        end:   parseDate(e.endDate ?? e.startDate),
+      }))
       .filter((e) => e.start >= now)
       .sort((a, b) => a.start.getTime() - b.start.getTime());
   }, [rawEvents]);
+
+  /* ───── helper: translate multiline strings line-by-line ───── */
+  const tLines = (str: string) =>
+    str
+      .split("\n")
+      .map((ln) => t(i18n.exists(ln.trim()) ? ln.trim() : clean(ln.trim())))
+      .join("\n");
 
   const addToCalendar = async (ev: Event) => {
     try {
@@ -92,12 +123,12 @@ export default function EventsScreen() {
       await Calendar.createEventAsync(cal.id, {
         title: t( i18n.exists(ev.title) ? ev.title : clean(ev.title) ),
         startDate: ev.start,
-        endDate: ev.end,
+        endDate:   ev.end,
         location: ev.address
           ? t( i18n.exists(ev.address!) ? ev.address! : clean(ev.address!) )
           : undefined,
         notes: ev.description
-          ? t( i18n.exists(ev.description!) ? ev.description! : clean(ev.description!) )
+          ? tLines(ev.description)
           : undefined,
         timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
@@ -141,21 +172,12 @@ export default function EventsScreen() {
             <Text style={[styles.emptyText, { color: ACCENT }]}>{t("noUpcomingEvents")}</Text>
           }
           renderItem={({ item }) => {
-            // תרגום תקין גם לכותרות סטטיות
             const titleKey = item.title;
-            const displayTitle = t(
-              i18n.exists(titleKey) ? titleKey : clean(item.title)
-            );
+            const displayTitle = t(i18n.exists(titleKey) ? titleKey : clean(item.title));
             const displayAddress = item.address
-              ? t(
-                  i18n.exists(item.address!) ? item.address! : clean(item.address!)
-                )
+              ? t(i18n.exists(item.address!) ? item.address! : clean(item.address!))
               : "";
-            const displayDesc = item.description
-              ? t(
-                  i18n.exists(item.description!) ? item.description! : clean(item.description!)
-                )
-              : "";
+            const displayDesc = item.description ? tLines(item.description) : "";
 
             return (
               <View style={[styles.card, { backgroundColor: SURFACE_BG, borderColor: ACCENT }]}>

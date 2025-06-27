@@ -214,8 +214,8 @@ export default function ForumDetails() {
           {/* forum card */}
           <View style={[styles.forumCard, { backgroundColor: CARD_BG, borderColor: ACCENT }]}>
             <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>
-              {t("Category:", "Category:")} {t(forum.category, forum.category)} ·{" "}
-              {t("Publisher:", "Publisher:")} {t(forum.createdBy.displayName, forum.createdBy.displayName)}
+              {t("Category") + ":"} {t(forum.category, forum.category)} ·{" "}
+              {t("Publisher") + ":"} {t(forum.createdBy.displayName, forum.createdBy.displayName)}
             </Text>
 
             <Text style={[styles.desc, { color: TEXT_PRIMARY }]}>

@@ -185,7 +185,7 @@ export default function UserStoreList() {
               <View style={styles.cardContent}>
                 <View style={styles.row}>
                   <Text style={[styles.storeName, { color: TEXT_PRIMARY }]} numberOfLines={1}>
-                    {item.name}
+                    {t(item.name?.trim(), item.name)}
                   </Text>
                   <View style={[styles.discountBadge, { backgroundColor: ACCENT + "22" }]}>
                     <Text style={[styles.discountText, { color: ACCENT }]}>-{item.discount}%</Text>
@@ -193,17 +193,32 @@ export default function UserStoreList() {
                 </View>
 
                 <Text style={[styles.categoryLabel, { color: TEXT_SECONDARY }]}>
-                  {t(item.category, item.category)}
+                  {t(item.category?.trim(), item.category)}
                 </Text>
                 {!!item.description && (
                   <Text style={[styles.description, { color: TEXT_SECONDARY }]} numberOfLines={2}>
-                    {item.description}
+                    {t(item.description?.trim(), item.description)}
                   </Text>
                 )}
 
                 <View style={styles.row}>
                   <Ionicons name="location-sharp" size={14} color={TEXT_SECONDARY} />
-                  <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>{item.address}</Text>
+                     {(() => {
+    // 1) מסירים רווחים מיותרים בקצוות
+    // 2) מאחדים כל רצף של רווחים לרווח יחיד
+    const cleanAddress = (item.address ?? "")
+      .trim()
+      // ⬅️  NBSP → space
+              /* NBSP → space          */ .replace(/\u00A0/g, " ")
+  /* ‎RLM / LRM → nothing  */ .replace(/[\u200F\u200E]/g, "")
+    /* collapse spaces */       .replace(/\s+/g, " ");
+
+    return (
+      <Text style={[styles.meta, { color: TEXT_SECONDARY }]}>
+        {t(cleanAddress, cleanAddress)}
+      </Text>
+    );
+  })()}
                 </View>
                 <View style={styles.row}>
                   <Ionicons name="call-outline" size={14} color={TEXT_SECONDARY} />
