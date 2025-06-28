@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   TextInput,
@@ -15,17 +15,25 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
-import { addDoc, collection, serverTimestamp, doc, getDoc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  serverTimestamp,
+  doc,
+  getDoc,
+} from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { router } from "expo-router";
 import { db } from "../../../firebase";
 import { useSettings } from "../../../contexts/SettingsContext";
 import { useTranslation } from "react-i18next";
 
-const PRIMARY = "#ff5252";
-const LIGHT_BG = "#ffffff";
+/* צבעים */
+const PRIMARY    = "#ff5252";
+const LIGHT_BG   = "#ffffff";
 const LIGHT_GREY = "#EEE";
 
+/* קטגוריות */
 const CATEGORIES = [
   "תוכנה",
   "תעשייה וניהול",
@@ -40,65 +48,95 @@ const CATEGORIES = [
 
 export default function NewForum() {
   const insets = useSafeAreaInsets();
-  const { darkMode } = useSettings();
-  const { t, i18n } = useTranslation();
-  const isRTL = i18n.dir() === "rtl";
+  const { darkMode }     = useSettings();
+  const { t, i18n }      = useTranslation();
+  const isRTL            = i18n.dir() === "rtl";
 
-  const SURFACE_BG = darkMode ? "#121212" : LIGHT_BG;
-  const FIELD_BG = darkMode ? "#1f1f1f" : LIGHT_GREY;
+  /* -- palette -- */
+  const SURFACE_BG   = darkMode ? "#121212" : LIGHT_BG;
+  const FIELD_BG     = darkMode ? "#1f1f1f" : LIGHT_GREY;
   const TEXT_PRIMARY = darkMode ? "#E0E0E0" : "#121212";
   const BORDER_COLOR = PRIMARY;
 
+  /* auth */
   const auth = getAuth();
   const user = auth.currentUser;
 
-  const [title, setTitle] = useState("");
+  /* ------- state ------- */
+  const [title, setTitle]       = useState("");
   const [category, setCategory] = useState<string>("");
-  const [desc, setDesc] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [open, setOpen] = useState(false);
-  const pickerRef = useRef<View>(null);
+  const [desc, setDesc]         = useState("");
+  const [saving, setSaving]     = useState(false);
+  const [open, setOpen]         = useState(false);
+  const pickerRef               = useRef<View>(null);
   const [pickerLayout, setPickerLayout] = useState<LayoutRectangle | null>(null);
 
+  /* ------- save ------- */
   const handleSave = async () => {
     if (!title.trim() || !category) {
-      Alert.alert(t("error","שגיאה"), t("errorFillTitleAndCategory","חובה למלא כותרת וקטגוריה"));
+      Alert.alert(
+        t("error", "שגיאה"),
+        t("errorFillTitleAndCategory", "חובה למלא כותרת וקטגוריה")
+      );
       return;
     }
     if (!user) {
-      Alert.alert(t("error","שגיאה"), t("errorNoUser","אין משתמש מחובר"));
+      Alert.alert(t("error", "שגיאה"), t("errorNoUser", "אין משתמש מחובר"));
       return;
     }
+
     setSaving(true);
     try {
-      const userDoc = await getDoc(doc(db, "users", user.uid!));
-      let displayName = user.displayName || t("unknown","Unknown");
-      if (userDoc.exists()) {
-        const u = userDoc.data() as any;
-        const name = `${u.firstName||""} ${u.lastName||""}`.trim();
-        if (name) displayName = name;
+      /* מציאת שם מלא מה-users */
+      let displayName = user.displayName || t("unknown", "Unknown");
+      const uDoc      = await getDoc(doc(db, "users", user.uid));
+      if (uDoc.exists()) {
+        const u     = uDoc.data() as any;
+        const full  = `${u.firstName || ""} ${u.lastName || ""}`.trim();
+        if (full) displayName = full;
       }
+
+      /* ---------- addDoc עם שדות האישור + נעיצה ---------- */
       await addDoc(collection(db, "forums"), {
-        title: title.trim(),
+        title:       title.trim(),
         category,
         description: desc.trim(),
-        createdAt: serverTimestamp(),
-        createdBy: { displayName },
-        isActive: true,
+        createdAt:   serverTimestamp(),
+
+        /* שדות חדשים לאישור */
+        approvalRequestedAt: serverTimestamp(),
+        expireAt:            serverTimestamp(),   // לוגיקת מחיקה אוטומטית בקצה-שרת
+        isApproved:          false,
+
+        /* שדות נעיצה (ברירת-מחדל) */
+        isPinned: false,
+        pinnedAt: null,
+
+        /* שדות קיימים */
+        createdBy:   { displayName },
+        isActive:    true,
         lastActivity: serverTimestamp(),
+        likes:        0,
+        commentsCount: 0,
       });
+
       router.back();
     } catch (e: any) {
-      Alert.alert(t("error","שגיאה"), e.message || t("errorCannotSave","לא ניתן לשמור פורום"));
+      Alert.alert(
+        t("error", "שגיאה"),
+        e?.message || t("errorCannotSave", "לא ניתן לשמור פורום")
+      );
       setSaving(false);
     }
   };
 
+  /* ---------- UI ---------- */
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: SURFACE_BG }]}
       edges={["top", "bottom"]}
     >
+      {/* HEADER */}
       <LinearGradient
         colors={[PRIMARY, "#ff1744"]}
         start={{ x: 0, y: 0 }}
@@ -106,18 +144,15 @@ export default function NewForum() {
         style={[styles.header, { paddingTop: insets.top + 12 }]}
       >
         <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-          <Ionicons
-            name= "arrow-back"
-            size={24}
-            color={LIGHT_BG}
-          />
+          <Ionicons name="arrow-back" size={24} color={LIGHT_BG} />
         </Pressable>
         <Text style={styles.headerTitle}>
-          {t("newForumTitle","יצירת פורום חדש")}
+          {t("newForumTitle", "יצירת פורום חדש")}
         </Text>
         <View style={styles.headerBtn} />
       </LinearGradient>
 
+      {/* FORM */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.flex}
@@ -126,9 +161,14 @@ export default function NewForum() {
           contentContainerStyle={styles.container}
           showsVerticalScrollIndicator={false}
         >
-          {/* title */}
-          <Text style={[styles.label, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
-            {t("forumTitleLabel","כותרת פורום *")}
+          {/* כותרת */}
+          <Text
+            style={[
+              styles.label,
+              { color: TEXT_PRIMARY, textAlign: isRTL ? "right" : "left" },
+            ]}
+          >
+            {t("forumTitleLabel", "כותרת פורום *")}
           </Text>
           <TextInput
             style={[
@@ -137,18 +177,23 @@ export default function NewForum() {
                 borderColor: BORDER_COLOR,
                 backgroundColor: FIELD_BG,
                 color: TEXT_PRIMARY,
-                textAlign: isRTL?"right":"left"
+                textAlign: isRTL ? "right" : "left",
               },
             ]}
-            placeholder={t("forumTitlePlaceholder","הכנס כותרת")}
+            placeholder={t("forumTitlePlaceholder", "הכנס כותרת")}
             placeholderTextColor="#888"
             value={title}
             onChangeText={setTitle}
           />
 
-          {/* category */}
-          <Text style={[styles.label, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
-            {t("categoryLabel","קטגוריה *")}
+          {/* קטגוריה */}
+          <Text
+            style={[
+              styles.label,
+              { color: TEXT_PRIMARY, textAlign: isRTL ? "right" : "left" },
+            ]}
+          >
+            {t("categoryLabel", "קטגוריה *")}
           </Text>
           <View
             ref={pickerRef}
@@ -166,13 +211,13 @@ export default function NewForum() {
                   styles.pickerText,
                   {
                     color: category ? TEXT_PRIMARY : "#888",
-                    textAlign: isRTL?"right":"left"
+                    textAlign: isRTL ? "right" : "left",
                   },
                 ]}
               >
                 {category
                   ? t(category, category)
-                  : t("categoryPlaceholder","בחר קטגוריה")}
+                  : t("categoryPlaceholder", "בחר קטגוריה")}
               </Text>
               <Ionicons
                 name={open ? "chevron-up" : "chevron-down"}
@@ -206,7 +251,15 @@ export default function NewForum() {
                       setOpen(false);
                     }}
                   >
-                    <Text style={[styles.dropdownText, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
+                    <Text
+                      style={[
+                        styles.dropdownText,
+                        {
+                          color: TEXT_PRIMARY,
+                          textAlign: isRTL ? "right" : "left",
+                        },
+                      ]}
+                    >
                       {t(c, c)}
                     </Text>
                   </Pressable>
@@ -215,9 +268,14 @@ export default function NewForum() {
             </View>
           )}
 
-          {/* description */}
-          <Text style={[styles.label, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
-            {t("descLabel","תיאור (לא חובה)")}
+          {/* תיאור */}
+          <Text
+            style={[
+              styles.label,
+              { color: TEXT_PRIMARY, textAlign: isRTL ? "right" : "left" },
+            ]}
+          >
+            {t("descLabel", "תיאור (לא חובה)")}
           </Text>
           <TextInput
             style={[
@@ -227,17 +285,17 @@ export default function NewForum() {
                 borderColor: BORDER_COLOR,
                 backgroundColor: FIELD_BG,
                 color: TEXT_PRIMARY,
-                textAlign: isRTL?"right":"left"
+                textAlign: isRTL ? "right" : "left",
               },
             ]}
-            placeholder={t("descPlaceholder","הכנס תיאור")}
+            placeholder={t("descPlaceholder", "הכנס תיאור")}
             placeholderTextColor="#888"
             value={desc}
             onChangeText={setDesc}
             multiline
           />
 
-          {/* save */}
+          {/* כפתור שמירה */}
           <Pressable
             style={[styles.saveBtn, { backgroundColor: PRIMARY }]}
             onPress={handleSave}
@@ -246,9 +304,7 @@ export default function NewForum() {
             {saving ? (
               <ActivityIndicator color={LIGHT_BG} />
             ) : (
-              <Text style={styles.saveTxt}>
-                {t("saveForum","שמור פורום")}
-              </Text>
+              <Text style={styles.saveTxt}>{t("saveForum", "שמור פורום")}</Text>
             )}
           </Pressable>
         </ScrollView>
@@ -257,35 +313,35 @@ export default function NewForum() {
   );
 }
 
+/* -------- styles -------- */
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
 
   header: {
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
   },
   headerTitle: { color: LIGHT_BG, fontSize: 20, fontWeight: "700" },
-  headerBtn: { width: 32, height: 32, justifyContent: "center", alignItems: "center" },
+  headerBtn:   { width: 32, height: 32, justifyContent: "center", alignItems: "center" },
 
   container: { padding: 16, paddingBottom: 24 },
 
   label: { fontSize: 16, fontWeight: "600", marginBottom: 6, marginTop: 12 },
 
-  input: { borderWidth: 1, borderRadius: 8, padding: 12, fontSize: 16, marginBottom: 0 },
+  input: { borderWidth: 1, borderRadius: 8, padding: 12, fontSize: 16 },
   textArea: { height: 100, textAlignVertical: "top" },
 
   pickerButton: {
     height: 44,
-    flexDirection: "row",
+    flexDirection: "row-reverse",
     alignItems: "center",
     justifyContent: "space-between",
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,
-    marginBottom: 0,
   },
   pickerText: { fontSize: 16 },
 
@@ -304,6 +360,11 @@ const styles = StyleSheet.create({
   },
   dropdownText: { fontSize: 16 },
 
-  saveBtn: { marginTop: 24, paddingVertical: 14, borderRadius: 8, alignItems: "center" },
+  saveBtn: {
+    marginTop: 24,
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: "center",
+  },
   saveTxt: { color: LIGHT_BG, fontSize: 16, fontWeight: "600" },
 });

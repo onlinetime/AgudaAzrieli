@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "bold",
     textAlign: "center",
-    color: "#880e4f",
+    color: "#ff0043",
   },
   card: {
     backgroundColor: "#ffebee",

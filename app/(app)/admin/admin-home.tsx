@@ -41,6 +41,7 @@ const MAIN_MENU = [
   //{ key: "forumPost",       to: "./admin-forum",       icon: "help-circle-outline" }, -- לשאול את לירון אם הוא רוצה את זה
   { key: "studentCardlist",     to: "./studentslist",       icon: "cube-outline" },
   //{ key: "waveSettings",    to: "./waveSettings",      icon: "color-palette-outline" }, --- לשאול את לירון אם הוא רוצה את זה
+  { key: "pendingForums"  , to: "/admin/pending-forums", icon: "help-circle-outline" },
   { key: "settings",        to: "/settings",           icon: "settings-outline" },
 ];
 
