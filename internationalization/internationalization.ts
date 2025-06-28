@@ -113,6 +113,7 @@ errorCannotSave:            "לא ניתן לשמור פורום",
       eventManagement: "ניהול אירועים",
       storeManagement: "ניהול חנויות",
       studentCardlist: "רשימת כרטיסי סטודנט",
+      pendingForums: "אישור פורומים",
       
 
       /* – NEW admin actions – */
@@ -393,6 +394,7 @@ errorCannotSave:            "Cannot save forum",
       eventManagement: "Manage Events",
       storeManagement: "Manage Stores",
       studentCardlist: "Student Card List",
+      pendingForums: "Pending Forums",
 
       /* – NEW admin actions – */
       createGift: "Create Gift",
