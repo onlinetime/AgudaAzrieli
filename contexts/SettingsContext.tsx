@@ -16,88 +16,130 @@ import {
 import i18n from "../internationalization/internationalization";
 import { db } from "../firebase";
 
-/* ---------- טיפוסים ---------- */
-type Settings = { language: "he" | "en"; darkMode: boolean };
-const DEFAULT: Settings = { language: "he", darkMode: false };
+/* ------------------------------------------------------------------
+   טיפוסים והגדרות ברירת-מחדל
+   ------------------------------------------------------------------ */
+type Settings = {
+  language: "he" | "en";
+  darkMode: boolean;
+};
 
+const DEFAULT_SETTINGS: Settings = { language: "he", darkMode: false };
+
+/** ✨ טיפוס הקונטקסט – הוספנו isAdmin */
 type Ctx = Settings & {
   toggleLanguage: () => void;
   setDarkMode: (v: boolean) => void;
+  /**  האם המשתמש מוגדר כאדמין ב-Firestore */
+  isAdmin: boolean;
+  /**  האם הטעינה הראשונית עדיין רצה */
   loading: boolean;
 };
 
-/* ---------- קונטקסט ---------- */
+/* ------------------------------------------------------------------
+   יצירת הקונטקסט עם ערכים ראשוניים ריקים
+   ------------------------------------------------------------------ */
 const SettingsContext = createContext<Ctx>({
-  ...DEFAULT,
+  ...DEFAULT_SETTINGS,
   toggleLanguage() {},
   setDarkMode() {},
+  isAdmin: false,
   loading: true,
 });
+
+/* הוק נוח */
 export const useSettings = () => useContext(SettingsContext);
 
-/* ---------- Provider ---------- */
+/* ------------------------------------------------------------------
+   SettingsProvider – עוטף את האפליקציה כולה
+   ------------------------------------------------------------------ */
 export const SettingsProvider = ({ children }: { children: ReactNode }) => {
-  const [state, setState] = useState<Settings>(DEFAULT);
-  const [loading, setLoading] = useState(true);
+  /*  state להגדרות משתמש */
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  /*  state לדגל אדמין  */
+  const [isAdmin, setIsAdmin]   = useState(false);
+  /*  state ל־spinner ראשוני  */
+  const [loading, setLoading]   = useState(true);
 
+  /* --------------------------------------------------------------
+     מאזין ל־Auth + קריאת המסמך מה־Firestore
+     -------------------------------------------------------------- */
   useEffect(() => {
     const stop = onAuthStateChanged(getAuth(), async (user) => {
       if (!user) {
-        setState(DEFAULT);
-        i18n.changeLanguage(DEFAULT.language);
+        setSettings(DEFAULT_SETTINGS);
+        setIsAdmin(false);
+        i18n.changeLanguage(DEFAULT_SETTINGS.language);
         setLoading(false);
         return;
       }
 
-      const userDocId = user.uid;   // Always use UID!
-      const ref = doc(db, "users", userDocId);
+      const uid = user.uid;                      // תמיד UID
+      const ref = doc(db, "users", uid);
 
-      /* --- טעינת הגדרות --- */
       try {
         const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data() as any;
-          const fromDB = (data.settings as Partial<Settings>) ?? {};
-          const merged = { ...DEFAULT, ...fromDB } as Settings;
-          setState(merged);
-          i18n.changeLanguage(merged.language);
-        } else {
-          // אם משום-מה מסמך לא קיים – נוצר מינימלי
-          await setDoc(ref, { settings: DEFAULT }, { merge: true });
-          setState(DEFAULT);
-          i18n.changeLanguage(DEFAULT.language);
-        }
+
+        /* --- הגדרות --- */
+        const fromDB =
+          (snap.exists() && (snap.data() as any).settings) ?? {};
+        const merged = { ...DEFAULT_SETTINGS, ...fromDB } as Settings;
+
+        setSettings(merged);
+        i18n.changeLanguage(merged.language);
+
+        /* --- ‎isAdmin‎ --- */
+        const adminFlag =
+          snap.exists() && Boolean((snap.data() as any).isAdmin);
+        setIsAdmin(adminFlag);
       } catch (e) {
         console.error("settings-load", e);
-        setState(DEFAULT);
+        setSettings(DEFAULT_SETTINGS);
+        setIsAdmin(false);
       }
+
       setLoading(false);
     });
 
-    return stop;
+    return stop; // clean-up
   }, []);
 
-  /* --- שמירה --- */
+  /* --------------------------------------------------------------
+     שמירת patch להגדרות
+     -------------------------------------------------------------- */
   const save = async (patch: Partial<Settings>) => {
-    const u = getAuth().currentUser;
-    if (!u) return;
-    const userDocId = u.uid;
-    const ref = doc(db, "users", userDocId);
-    const newState = { ...state, ...patch } as Settings;
-    setState(newState); // <-- move this BEFORE updateDoc
+    const user = getAuth().currentUser;
+    if (!user) return;
+
+    const uid = user.uid;
+    const ref = doc(db, "users", uid);
+
+    const newState = { ...settings, ...patch } as Settings;
+
+    /* עידכון-מצב מקומי לפני קריאת-הרשת */
+    setSettings(newState);
     if (patch.language) i18n.changeLanguage(patch.language);
-    await updateDoc(ref, {
-      [`settings`]: newState,
-    });
+
+    await updateDoc(ref, { settings: newState });
   };
 
+  /* פעולות נוחות */
   const toggleLanguage = () =>
-    save({ language: state.language === "he" ? "en" : "he" });
+    save({ language: settings.language === "he" ? "en" : "he" });
   const setDarkMode = (v: boolean) => save({ darkMode: v });
 
+  /* --------------------------------------------------------------
+     ספק הערכים לילדים
+     -------------------------------------------------------------- */
   return (
     <SettingsContext.Provider
-      value={{ ...state, toggleLanguage, setDarkMode, loading }}
+      value={{
+        ...settings,
+        toggleLanguage,
+        setDarkMode,
+        isAdmin,   // ✨ זמין לכל האפליקציה
+        loading,
+      }}
     >
       {children}
     </SettingsContext.Provider>
