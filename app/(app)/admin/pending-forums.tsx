@@ -56,7 +56,7 @@ export default function PendingForumsScreen() {
           const data = docSnap.data() as any;
           const reqTs = data.approvalRequestedAt?.toMillis?.();
           // מחיקה אוטומטית אחרי שבוע
-          if (reqTs && now - reqTs > 7 * 24 * 60 * 60 * 1000) {
+          if (reqTs && now - reqTs > 2 * 60 * 60 * 1000) {
             try {
               await deleteDoc(doc(db, "forums", docSnap.id));
             } catch (e: any) {
