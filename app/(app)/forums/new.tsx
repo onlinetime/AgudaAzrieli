@@ -20,9 +20,9 @@ import { getAuth } from "firebase/auth";
 import { router } from "expo-router";
 import { db } from "../../../firebase";
 import { useSettings } from "../../../contexts/SettingsContext";
-import { useTranslation } from "react-i18next";           /* ← תרגום */
+import { useTranslation } from "react-i18next";
 
-const PRIMARY = "#ff1744";
+const PRIMARY = "#ff5252";
 const LIGHT_BG = "#ffffff";
 const LIGHT_GREY = "#EEE";
 
@@ -41,27 +41,25 @@ const CATEGORIES = [
 export default function NewForum() {
   const insets = useSafeAreaInsets();
   const { darkMode } = useSettings();
-  const { t } = useTranslation();                   /* ← i18next */
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.dir() === "rtl";
 
-  /* palette */
-  const SURFACE_BG   = darkMode ? "#121212" : LIGHT_BG;
-  const FIELD_BG     = darkMode ? "#1f1f1f" : LIGHT_GREY;
+  const SURFACE_BG = darkMode ? "#121212" : LIGHT_BG;
+  const FIELD_BG = darkMode ? "#1f1f1f" : LIGHT_GREY;
   const TEXT_PRIMARY = darkMode ? "#E0E0E0" : "#121212";
   const BORDER_COLOR = PRIMARY;
 
   const auth = getAuth();
   const user = auth.currentUser;
 
-  /* state */
-  const [title, setTitle]       = useState("");
+  const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>("");
-  const [desc, setDesc]         = useState("");
-  const [saving, setSaving]     = useState(false);
-  const [open, setOpen]         = useState(false);
-  const pickerRef               = useRef<View>(null);
+  const [desc, setDesc] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [open, setOpen] = useState(false);
+  const pickerRef = useRef<View>(null);
   const [pickerLayout, setPickerLayout] = useState<LayoutRectangle | null>(null);
 
-  /* save */
   const handleSave = async () => {
     if (!title.trim() || !category) {
       Alert.alert(t("error","שגיאה"), t("errorFillTitleAndCategory","חובה למלא כותרת וקטגוריה"));
@@ -71,16 +69,15 @@ export default function NewForum() {
       Alert.alert(t("error","שגיאה"), t("errorNoUser","אין משתמש מחובר"));
       return;
     }
-
     setSaving(true);
     try {
-      const userDoc = await getDoc(doc(db, "users", user.email!));
-      let displayName = t("unknown","Unknown");
+      const userDoc = await getDoc(doc(db, "users", user.uid!));
+      let displayName = user.displayName || t("unknown","Unknown");
       if (userDoc.exists()) {
         const u = userDoc.data() as any;
-        displayName = (`${u.firstName || ""} ${u.lastName || ""}`.trim()) || displayName;
+        const name = `${u.firstName||""} ${u.lastName||""}`.trim();
+        if (name) displayName = name;
       }
-
       await addDoc(collection(db, "forums"), {
         title: title.trim(),
         category,
@@ -97,28 +94,52 @@ export default function NewForum() {
     }
   };
 
-  /* ---------- UI ---------- */
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: SURFACE_BG }]} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: SURFACE_BG }]}
+      edges={["top", "bottom"]}
+    >
       <LinearGradient
-        colors={[PRIMARY, "#d32f2f"]}
+        colors={[PRIMARY, "#ff1744"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={[styles.header, { paddingTop: insets.top + 12 }]}
       >
         <Pressable onPress={() => router.back()} style={styles.headerBtn}>
-          <Ionicons name="arrow-back" size={24} color={LIGHT_BG} />
+          <Ionicons
+            name= "arrow-back"
+            size={24}
+            color={LIGHT_BG}
+          />
         </Pressable>
-        <Text style={styles.headerTitle}>{t("newForumTitle","יצירת פורום חדש")}</Text>
+        <Text style={styles.headerTitle}>
+          {t("newForumTitle","יצירת פורום חדש")}
+        </Text>
         <View style={styles.headerBtn} />
       </LinearGradient>
 
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.flex}
+      >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+        >
           {/* title */}
-          <Text style={[styles.label, { color: TEXT_PRIMARY }]}>{t("forumTitleLabel","כותרת פורום *")}</Text>
+          <Text style={[styles.label, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
+            {t("forumTitleLabel","כותרת פורום *")}
+          </Text>
           <TextInput
-            style={[styles.input, { borderColor: BORDER_COLOR, backgroundColor: FIELD_BG, color: TEXT_PRIMARY }]}
+            style={[
+              styles.input,
+              {
+                borderColor: BORDER_COLOR,
+                backgroundColor: FIELD_BG,
+                color: TEXT_PRIMARY,
+                textAlign: isRTL?"right":"left"
+              },
+            ]}
             placeholder={t("forumTitlePlaceholder","הכנס כותרת")}
             placeholderTextColor="#888"
             value={title}
@@ -126,19 +147,42 @@ export default function NewForum() {
           />
 
           {/* category */}
-          <Text style={[styles.label, { color: TEXT_PRIMARY }]}>{t("categoryLabel","קטגוריה *")}</Text>
-          <View ref={pickerRef} onLayout={({ nativeEvent: { layout } }) => setPickerLayout(layout)}>
+          <Text style={[styles.label, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
+            {t("categoryLabel","קטגוריה *")}
+          </Text>
+          <View
+            ref={pickerRef}
+            onLayout={({ nativeEvent: { layout } }) => setPickerLayout(layout)}
+          >
             <Pressable
-              style={[styles.pickerButton, { borderColor: BORDER_COLOR, backgroundColor: FIELD_BG }]}
-              onPress={() => setOpen((o) => !o)}
+              style={[
+                styles.pickerButton,
+                { borderColor: BORDER_COLOR, backgroundColor: FIELD_BG },
+              ]}
+              onPress={() => setOpen(o => !o)}
             >
-              <Text style={[styles.pickerText, { color: category ? TEXT_PRIMARY : "#888" }]}>
-                {category ? t(category, category) : t("categoryPlaceholder","בחר קטגוריה")}
+              <Text
+                style={[
+                  styles.pickerText,
+                  {
+                    color: category ? TEXT_PRIMARY : "#888",
+                    textAlign: isRTL?"right":"left"
+                  },
+                ]}
+              >
+                {category
+                  ? t(category, category)
+                  : t("categoryPlaceholder","בחר קטגוריה")}
               </Text>
-              <Ionicons name={open ? "chevron-up" : "chevron-down"} size={20} color={TEXT_PRIMARY} />
+              <Ionicons
+                name={open ? "chevron-up" : "chevron-down"}
+                size={20}
+                color={TEXT_PRIMARY}
+              />
             </Pressable>
           </View>
 
+          {/* dropdown */}
           {open && pickerLayout && (
             <View
               style={[
@@ -153,7 +197,7 @@ export default function NewForum() {
               ]}
             >
               <ScrollView nestedScrollEnabled>
-                {CATEGORIES.map((c) => (
+                {CATEGORIES.map(c => (
                   <Pressable
                     key={c}
                     style={styles.dropdownItem}
@@ -162,7 +206,9 @@ export default function NewForum() {
                       setOpen(false);
                     }}
                   >
-                    <Text style={[styles.dropdownText, { color: TEXT_PRIMARY }]}>{t(c, c)}</Text>
+                    <Text style={[styles.dropdownText, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
+                      {t(c, c)}
+                    </Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -170,12 +216,19 @@ export default function NewForum() {
           )}
 
           {/* description */}
-          <Text style={[styles.label, { color: TEXT_PRIMARY }]}>{t("descLabel","תיאור (לא חובה)")}</Text>
+          <Text style={[styles.label, { color: TEXT_PRIMARY, textAlign: isRTL?"right":"left" }]}>
+            {t("descLabel","תיאור (לא חובה)")}
+          </Text>
           <TextInput
             style={[
               styles.input,
               styles.textArea,
-              { borderColor: BORDER_COLOR, backgroundColor: FIELD_BG, color: TEXT_PRIMARY },
+              {
+                borderColor: BORDER_COLOR,
+                backgroundColor: FIELD_BG,
+                color: TEXT_PRIMARY,
+                textAlign: isRTL?"right":"left"
+              },
             ]}
             placeholder={t("descPlaceholder","הכנס תיאור")}
             placeholderTextColor="#888"
@@ -184,7 +237,7 @@ export default function NewForum() {
             multiline
           />
 
-          {/* save button */}
+          {/* save */}
           <Pressable
             style={[styles.saveBtn, { backgroundColor: PRIMARY }]}
             onPress={handleSave}
@@ -193,7 +246,9 @@ export default function NewForum() {
             {saving ? (
               <ActivityIndicator color={LIGHT_BG} />
             ) : (
-              <Text style={styles.saveTxt}>{t("saveForum","שמור פורום")}</Text>
+              <Text style={styles.saveTxt}>
+                {t("saveForum","שמור פורום")}
+              </Text>
             )}
           </Pressable>
         </ScrollView>
@@ -202,13 +257,12 @@ export default function NewForum() {
   );
 }
 
-/* ---------- styles (ללא שינויי מחיקה) ---------- */
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   flex: { flex: 1 },
 
   header: {
-    flexDirection: "row-reverse",
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
@@ -242,7 +296,12 @@ const styles = StyleSheet.create({
     maxHeight: 200,
     zIndex: 999,
   },
-  dropdownItem: { paddingVertical: 12, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: "#ddd" },
+  dropdownItem: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ddd",
+  },
   dropdownText: { fontSize: 16 },
 
   saveBtn: { marginTop: 24, paddingVertical: 14, borderRadius: 8, alignItems: "center" },

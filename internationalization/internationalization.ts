@@ -26,7 +26,7 @@ const resources = {
 
       /* ─ Home (user) ─ */
       welcomeTitle: "ברוכים הבאים לאגודת הסטודנטים",
-      homeOfStudents: "דף הבית של הסטודנטים", // ← חדש
+      homeOfStudents: "הבית של הסטונדטים", // ← חדש
       studentCard: "כרטיס סטודנט",
       upcomingEvents: "אירועים קרובים",
       inbox: "הודעות",
@@ -36,6 +36,8 @@ const resources = {
       relevantNotices: "הודעות רלוונטיות",    // ← חדש
       notice1: "כותרת הודעה 1",                // ← חדש
       notice2: "כותרת הודעה 2",                // ← חדש
+      quoteOfMoment: "ציטוט של הרגע", // ← חדש
+      aboutAssociation: "קצת על האגודה", // ← חדש
 
       /* ─ Feedback UI ─ */
       weValueFeedback: "אנחנו מעריכים את דעתך",
@@ -74,7 +76,7 @@ const resources = {
 
 
 Unknown: "לא ידוע",
-IdoAgai: "עידו אגאי",
+//IdoAgai: "עידו אגאי",
 "Write a comment…": "כתוב תגובה…",
       /* ────────  ▼ תוספות חדשות ▼ ──────── */
 newForumTitle:              "יצירת פורום חדש",
@@ -102,7 +104,7 @@ errorCannotSave:            "לא ניתן לשמור פורום",
 
 
       /* ─ Home (admin) ─ */
-      welcomeAdmin: "ברוך הבא אדמין יקר",
+      welcomeAdmin: "מרכז הניהול",
       feedback: "צפייה בפידבקים",
       forumApprove: "אישור פורום",
       forumPost: "פרסום בפורום",
@@ -110,6 +112,7 @@ errorCannotSave:            "לא ניתן לשמור פורום",
       addCard: "הוסף כרטיס סטודנט",
       eventManagement: "ניהול אירועים",
       storeManagement: "ניהול חנויות",
+      studentCardlist: "רשימת כרטיסי סטודנט",
       
 
       /* – NEW admin actions – */
@@ -306,9 +309,10 @@ errorCannotSave:            "לא ניתן לשמור פורום",
 
       /* ─ Home (user) ─ */
       welcomeTitle: "Welcome Student!",
-      homeOfStudents: "Students Home Page",   // ← new
+      homeOfStudents: "Students Home",   // ← new
       studentCard: "Student Card",
       upcomingEvents: "Upcoming Events",
+      aboutAssociation: "About the Association", // ← new
       inbox: "Inbox",
       forums: "Forums",
       storesList: "Stores List",
@@ -316,7 +320,7 @@ errorCannotSave:            "לא ניתן לשמור פורום",
       relevantNotices: "Relevant Notices",    // ← new
       notice1: "Notice Title 1",              // ← new
       notice2: "Notice Title 2",              // ← new
-
+      quoteOfMoment: "Quote of the Moment", // ← new
       /* ─ Feedback UI ─ */
       weValueFeedback: "We Value Your Feedback",
       letUsKnow: "Let us know your thoughts or suggestions.",
@@ -380,7 +384,7 @@ errorCannotSave:            "Cannot save forum",
 
 
       /* ─ Home (admin) ─ */
-      welcomeAdmin: "Welcome Admin!",
+      welcomeAdmin: "Management Center",
       feedback: "View Feedback",
       forumApprove: "Approve Forum",
       forumPost: "Post to Forum",
@@ -388,6 +392,7 @@ errorCannotSave:            "Cannot save forum",
       addCard: "Add Student Card",
       eventManagement: "Manage Events",
       storeManagement: "Manage Stores",
+      studentCardlist: "Student Card List",
 
       /* – NEW admin actions – */
       createGift: "Create Gift",
