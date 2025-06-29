@@ -10,13 +10,14 @@ import {
   Dimensions,
   ScrollView,
   Animated,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Path } from "react-native-svg";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp, arrayUnion, addDoc, collection } from "firebase/firestore";
 import {
   getStorage,
   ref as storageRef,
@@ -56,6 +57,10 @@ export default function StudentCardScreen() {
   /* state */
   const [data, setData] = useState<StudentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [images, setImages] = useState<string[]>([]); // Add this state
+  const [saving, setSaving] = useState(false); // Add saving state
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
 
   const auth = useMemo(getFirebaseAuth, []);
 
@@ -112,6 +117,89 @@ export default function StudentCardScreen() {
     }
   }, [auth, t]);
 
+  // Multi-image picker
+  const pickImages = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("שגיאה", "אין הרשאה לגישה לתמונות");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      const uris = result.assets.map((asset) => asset.uri);
+      setImages((prev) => [...prev, ...uris]);
+    }
+  }, []);
+
+  // Remove selected image by index
+  const removeImage = (idx: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const uploadImagesAndGetUrls = async (uris: string[]) => {
+    const storage = getStorage();
+    const user = auth.currentUser!;
+    const uploadPromises = uris.map(async (uri, idx) => {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const timestamp = Date.now();
+      const imageRef = storageRef(
+        storage,
+        `gallery/${user.uid}/${timestamp}_${idx}`
+      );
+      await uploadBytes(imageRef, blob);
+      const downloadUrl = await getDownloadURL(imageRef);
+      return downloadUrl;
+    });
+    return Promise.all(uploadPromises);
+  };
+
+  // Submit new gallery images for the current user
+  const handleSubmit = async () => {
+    // Require at least one of title, content, or images
+    if (!title.trim() && !content.trim() && images.length === 0) {
+      Alert.alert("שגיאה", "יש למלא לפחות אחד מהשדות: כותרת, תוכן או תמונה");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('משתמש לא מזוהה');
+
+      // Upload images if any
+      const imageUrls = images.length
+        ? await uploadImagesAndGetUrls(images)
+        : [];
+
+      // Add new post to Firestore (posts collection)
+      await addDoc(collection(db, "posts"), {
+        title: title.trim(),
+        content: content.trim(),
+        images: imageUrls,
+        userId: user.uid,
+        createdAt: serverTimestamp(),
+      });
+
+      Alert.alert("הצלחה", "הפוסט נוצר בהצלחה", [
+        { text: "אישור", onPress: () => {
+          setTitle('');
+          setContent('');
+          setImages([]);
+        } },
+      ]);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('שגיאה', 'אירעה שגיאה בהעלאת התמונות');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   /* ––––––––––––––––– UI ––––––––––––––––– */
 
   if (loading) {
@@ -147,13 +235,56 @@ export default function StudentCardScreen() {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* כפתור העלאת תמונה */}
-        <Pressable style={[styles.upload, { backgroundColor: UPLOAD_BG }]} onPress={pickImage}>
-          <Ionicons name="camera" size={20} color={TEXT_PRIMARY} />
+        {/* Multi-image upload button */}
+        <Pressable style={[styles.upload, { backgroundColor: UPLOAD_BG }]} onPress={pickImages}>
+          <Ionicons name="images" size={20} color={TEXT_PRIMARY} />
           <Text style={[styles.uploadText, { color: TEXT_PRIMARY }]}>
-            {t("changePhoto")}
+            {t("uploadPhotos", "העלה תמונות")}
           </Text>
         </Pressable>
+
+        {/* Show selected images with remove option */}
+        <View style={{ flexDirection: "row", flexWrap: "wrap", marginVertical: 10 }}>
+          {images.map((uri, idx) => (
+            <View key={uri} style={{ margin: 4, position: "relative" }}>
+              <Image source={{ uri }} style={{ width: 70, height: 70, borderRadius: 8 }} />
+              <TouchableOpacity
+                onPress={() => removeImage(idx)}
+                style={{
+                  position: "absolute",
+                  top: -8,
+                  right: -8,
+                  backgroundColor: "#ff1744",
+                  borderRadius: 12,
+                  padding: 2,
+                }}
+              >
+                <Ionicons name="close" size={16} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+        </View>
+
+        {/* Submit Button for uploading images */}
+        {images.length > 0 && (
+          <View style={{ width: "100%", alignItems: "center", marginBottom: 10 }}>
+            <Pressable
+              style={{
+                backgroundColor: NEON,
+                paddingHorizontal: 24,
+                paddingVertical: 10,
+                borderRadius: 20,
+                opacity: saving ? 0.5 : 1,
+              }}
+              onPress={handleSubmit}
+              disabled={saving}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+                {saving ? t("uploading", "מעלה...") : t("uploadToGallery", "העלה לגלריה")}
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         {/* כרטיס הסטודנט */}
         <Animated.View
@@ -202,6 +333,25 @@ export default function StudentCardScreen() {
             </Text>
           </View>
         </Animated.View>
+
+        {/* Upload to gallery button */}
+        <View style={{ width: "100%", alignItems: "center", marginVertical: 10 }}>
+          <Pressable
+            style={{
+              backgroundColor: NEON,
+              paddingHorizontal: 24,
+              paddingVertical: 10,
+              borderRadius: 20,
+              opacity: images.length ? 1 : 0.5,
+            }}
+            onPress={handleSubmit} // Use handleSubmit here
+            disabled={!images.length}
+          >
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
+              {t("uploadToGallery", "העלה לגלריה")}
+            </Text>
+          </Pressable>
+        </View>
 
         {/* לוגו מוסד */}
         <Image source={logo} style={styles.logo} resizeMode="contain" />

@@ -10,6 +10,7 @@ import {
   Platform,
   StatusBar as RNStatusBar,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -57,6 +58,21 @@ export default function OpenEventsModern() {
   }, []);
 
   const label = (he: string, en: string) => (i18n.language === "en" ? en : he);
+
+  const confirmDelete = (id: string) => {
+    Alert.alert(
+      "מחק אירוע",
+      "בטוח/ה? פעולה זו בלתי הפיכה",
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "מחק",
+          style: "destructive",
+          onPress: () => handleDelete(id),
+        },
+      ]
+    );
+  };
 
   const handleDelete = async (id: string) => {
     await deleteDoc(doc(db, "events", id));
@@ -140,7 +156,7 @@ export default function OpenEventsModern() {
           <Text style={styles.actionLabel}>{label("ערוך", "Edit")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => handleDelete(item.id)}
+          onPress={() => confirmDelete(item.id)}
           style={[styles.actionBtn, { marginHorizontal: 8, backgroundColor: "#e64545" }]}
         >
           <Ionicons name="trash-outline" size={16} color="#fff" />

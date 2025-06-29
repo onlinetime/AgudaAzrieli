@@ -26,7 +26,7 @@ import {
   doc,
   Timestamp,
 } from "firebase/firestore";
-import { db } from "../../../firebase";
+import { db, auth } from "../../../firebase";
 import { useSettings } from "../../../contexts/SettingsContext";
 import { useTranslation } from "react-i18next";
 
@@ -60,11 +60,16 @@ export default function UserFeedback() {
     }
     setSending(true);
     try {
-      const userId = "USER_ID_HERE"; // TODO: החליפו ב־UID אמיתי
+      const userId = auth.currentUser?.uid;
+      if (!userId) {
+        Alert.alert(t("error", "שגיאה"), t("notLoggedIn", "משתמש לא מחובר"));
+        setSending(false);
+        return;
+      }
       // בודקים אם נשלח משוב בשבוע האחרון
       const oneWeekAgo = Timestamp.fromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const weeklyQ = query(
-        collection(db, "feedback"),
+        collection(db, "feedbacks"),
         where("userId", "==", userId),
         where("createdAt", ">=", oneWeekAgo)
       );
@@ -85,7 +90,7 @@ export default function UserFeedback() {
           userName = `${d.firstName ?? ""} ${d.lastName ?? ""}`.trim();
         }
       }
-      await addDoc(collection(db, "feedback"), {
+      await addDoc(collection(db, "feedbacks"), {
         content,
         userId,
         userName,

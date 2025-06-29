@@ -27,6 +27,7 @@ type StudentData = {
   id: string;
   firstName: string;
   lastName: string;
+  phone?: string; // Add this line
   ProfilePicture?: string;
 };
 
@@ -53,6 +54,7 @@ export default function StudentsListScreen() {
             id: doc.id,
             firstName: d.firstName,
             lastName: d.lastName,
+            phone: d.phone, // Add this line
             ProfilePicture: d.ProfilePicture,
           };
         });
@@ -179,17 +181,20 @@ export default function StudentsListScreen() {
                 >
                   {item.firstName} {item.lastName}
                 </Text>
-                <Text
-                  style={[
-                    styles.id,
-                    {
-                      color: darkMode ? "#C0C0C0" : "#555",
+                {item.phone ? (
+                  <Text
+                    style={{
+                      color: "#888",
+                      fontSize: 15,
+                      marginTop: 2,
                       textAlign: isRTL ? "right" : "left",
-                    },
-                  ]}
-                >
-                  {item.id}
-                </Text>
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                  >
+                    {item.phone}
+                  </Text>
+                ) : null}
               </View>
 
               {/* CHEVRON */}

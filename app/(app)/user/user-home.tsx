@@ -80,7 +80,7 @@ export default function UserHome() {
   useEffect(() => {
     const id = setInterval(() => {
       if (hasQuotes) setQuoteIndex(i => (i + 1) % QUOTES.length);
-    }, 3600000);
+    }, 1000);
     return () => clearInterval(id);
   }, [hasQuotes]);
 
@@ -194,12 +194,6 @@ export default function UserHome() {
                 </View>
               </Pressable>
             ))}
-            <Pressable
-              onPress={() => setDrawerOpen(false)}
-              style={[styles.closeButton, isRTL ? { left: 16 } : { right: 16 }]}
-            >
-              <Ionicons name="close-outline" size={28} color={ACCENT} />
-            </Pressable>
           </Animated.View>
 
           <View

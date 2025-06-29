@@ -10,6 +10,7 @@ import {
   Platform,
   StatusBar as RNStatusBar,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -51,6 +52,21 @@ export default function ListStoresModern() {
     );
     return () => unsub();
   }, []);
+
+  const confirmDelete = (id: string) => {
+    Alert.alert(
+      "מחק חנות",
+      "בטוח/ה? פעולה זו בלתי הפיכה",
+      [
+        { text: "ביטול", style: "cancel" },
+        {
+          text: "מחק",
+          style: "destructive",
+          onPress: () => handleDelete(id),
+        },
+      ]
+    );
+  };
 
   const handleDelete = async (id: string) => {
     await deleteDoc(doc(db, "stores", id));
@@ -97,7 +113,7 @@ export default function ListStoresModern() {
             <Text style={styles.actionLabel}>{t("edit")}</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => handleDelete(item.id)}
+            onPress={() => confirmDelete(item.id)}
             style={[styles.actionBtn, { backgroundColor: "#e64545", marginHorizontal: 8 }]}
           >
             <Ionicons name="trash-outline" size={16} color="#fff" />

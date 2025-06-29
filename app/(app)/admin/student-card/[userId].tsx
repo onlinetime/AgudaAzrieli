@@ -174,6 +174,7 @@ export default function StudentCardScreen() {
             </Text>
           </View>
 
+
           <View style={styles.infoRow}>
             <Ionicons name="time" size={18} color={NEON} />
             <Text style={[styles.infoText, { color: darkMode ? "#E0E0E0" : "#121212" }]}>

@@ -38,7 +38,7 @@ export default function FeedbackListModern() {
 
   useEffect(() => {
     const unsub = onSnapshot(
-      collection(db, "feedback"),
+      collection(db, "feedbacks"),
       async (snapshot) => {
         const now = new Date();
         const fresh = [];
@@ -50,7 +50,7 @@ export default function FeedbackListModern() {
               const diffDays =
                 (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
               if (diffDays > 30) {
-                await deleteDoc(doc(db, "feedback", docSnap.id));
+                await deleteDoc(doc(db, "feedbacks", docSnap.id));
                 return;
               }
             }
@@ -187,10 +187,21 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   cardTitle: { fontSize: 18, fontWeight: "700", flex: 1, marginLeft: 8 },
   cardDate: { fontSize: 12, color: "#666" },
-  cardText: { fontSize: 15, lineHeight: 22, marginBottom: 12 },
+  cardText: { 
+    fontSize: 15, 
+    lineHeight: 22, 
+    marginBottom: 12,
+    textAlign: "right",           // Add this line
+    writingDirection: "rtl",      // Add this line
+  },
   responseBox: { borderTopWidth: 1, paddingTop: 8 },
   responseLabel: { fontSize: 14, fontWeight: "600" },
-  responseText: { fontSize: 14, marginTop: 4 },
+  responseText: { 
+    fontSize: 14, 
+    marginTop: 4,
+    textAlign: "right",           // Add this line
+    writingDirection: "rtl",      // Add this line
+  },
   emptyContainer: { flex: 1, justifyContent: "center", alignItems: "center", marginTop: 80 },
   emptyText: { fontSize: 18, marginTop: 16 },
 });
